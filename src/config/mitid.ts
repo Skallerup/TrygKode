@@ -24,9 +24,8 @@ interface MitIDConfig {
 
 const configs: Record<string, MitIDConfig> = {
   test: {
-    // Criipto test-tenant — erstat med dine egne credentials fra dashboard.criipto.com
     domain: 'trygkode-test.criipto.id',
-    clientId: 'urn:trygkode:test',
+    clientId: 'urn:my:application:identifier:911071',
     redirectUri: 'trygkode://auth/callback',
     scopes: ['openid'],
     // MitID via Criipto — urn:grn:authn:dk:mitid:substantial kræver rigtig MitID
