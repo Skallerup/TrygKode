@@ -5,6 +5,7 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,11 +24,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onContactPress,
   onAddContact,
 }) => {
-  const { contacts, user, addContact } = useAppStore();
+  const { contacts, user, addContact, hasSeedData, setHasSeedData } = useAppStore();
 
   useEffect(() => {
-    if (contacts.length === 0) {
+    if (!hasSeedData) {
       mockContacts.forEach(addContact);
+      setHasSeedData(true);
     }
   }, []);
 
@@ -107,7 +109,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <ScreenHeader
         title="TrygKode"
         subtitle="Din tryghed, dit kodeord"
-        rightAction={{ icon: 'notifications-outline', onPress: () => {} }}
+        rightAction={{ icon: 'notifications-outline', onPress: () => Alert.alert('Notifikationer', 'Du har ingen nye notifikationer.') }}
       />
       <FlatList
         data={contacts}

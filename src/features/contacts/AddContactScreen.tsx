@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -29,8 +29,17 @@ export const AddContactScreen: React.FC<AddContactScreenProps> = ({
   const [codeType, setCodeType] = useState<'static' | 'rotating'>('static');
   const [customCode, setCustomCode] = useState('');
   const [step, setStep] = useState<'info' | 'code' | 'share'>('info');
+  const [generatedCode, setGeneratedCode] = useState(() => generateCodeWord());
 
-  const generatedCode = codeType === 'static' ? generateCodeWord() : generateRotatingCode();
+  const regenerateCode = useCallback((type: 'static' | 'rotating') => {
+    setGeneratedCode(type === 'static' ? generateCodeWord() : generateRotatingCode());
+  }, []);
+
+  const handleCodeTypeChange = (type: 'static' | 'rotating') => {
+    setCodeType(type);
+    setCustomCode('');
+    regenerateCode(type);
+  };
 
   const handleContinue = () => {
     if (step === 'info') {
@@ -40,6 +49,10 @@ export const AddContactScreen: React.FC<AddContactScreenProps> = ({
       }
       setStep('code');
     } else if (step === 'code') {
+      if (customCode.trim() && customCode.trim().length < 3) {
+        Alert.alert('For kort kodeord', 'Kodeordet skal være mindst 3 tegn langt.');
+        return;
+      }
       setStep('share');
     }
   };
@@ -99,7 +112,7 @@ export const AddContactScreen: React.FC<AddContactScreenProps> = ({
 
       <Card
         style={[styles.optionCard, codeType === 'static' && styles.optionCardActive]}
-        onPress={() => setCodeType('static')}
+        onPress={() => handleCodeTypeChange('static')}
         variant="outlined"
       >
         <View style={styles.optionHeader}>
@@ -115,7 +128,7 @@ export const AddContactScreen: React.FC<AddContactScreenProps> = ({
 
       <Card
         style={[styles.optionCard, codeType === 'rotating' && styles.optionCardActive]}
-        onPress={() => setCodeType('rotating')}
+        onPress={() => handleCodeTypeChange('rotating')}
         variant="outlined"
       >
         <View style={styles.optionHeader}>

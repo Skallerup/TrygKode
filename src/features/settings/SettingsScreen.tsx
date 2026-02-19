@@ -80,13 +80,13 @@ export const SettingsScreen: React.FC = () => {
           icon: 'document-text' as const,
           label: 'Privatlivspolitik',
           type: 'link' as const,
-          onPress: () => {},
+          onPress: () => Alert.alert('Privatlivspolitik', 'Privatlivspolitikken er under udarbejdelse og vil snart være tilgængelig.'),
         },
         {
           icon: 'help-circle' as const,
           label: 'Hjælp og support',
           type: 'link' as const,
-          onPress: () => {},
+          onPress: () => Alert.alert('Hjælp og support', 'Har du brug for hjælp? Kontakt os på support@trygkode.dk'),
         },
       ],
     },
@@ -108,7 +108,10 @@ export const SettingsScreen: React.FC = () => {
                 {contacts.length} kontakt{contacts.length !== 1 ? 'er' : ''} forbundet
               </Text>
             </View>
-            <TouchableOpacity style={styles.editProfile}>
+            <TouchableOpacity
+              style={styles.editProfile}
+              onPress={() => Alert.alert('Rediger profil', 'Profilredigering kommer i en kommende opdatering.')}
+            >
               <Ionicons name="pencil" size={18} color={colors.primary} />
             </TouchableOpacity>
           </View>

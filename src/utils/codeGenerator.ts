@@ -1,6 +1,6 @@
 const DANISH_WORDS = [
   'jordbær', 'solskin', 'sommerfugl', 'regnbue', 'havfrue',
-  'vikinge', 'pandekage', 'kanelsngl', 'fyrtårn', 'cykelsmed',
+  'vikinge', 'pandekage', 'kanelsnegl', 'fyrtårn', 'cykelsmed',
   'skovtur', 'klaphat', 'rugbrød', 'strandsand', 'blåbær',
   'vindmølle', 'smørblomst', 'danskvand', 'hyggebukser', 'koldskål',
   'wienerbrød', 'flødebolle', 'kagemand', 'legehus', 'fiskesø',

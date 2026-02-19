@@ -33,19 +33,21 @@ export const MitIDScreen: React.FC<MitIDScreenProps> = ({ onVerified }) => {
         }
         setErrorMessage(error.message);
       } else {
-        setErrorMessage('Der opstod en uventet fejl. Prøv igen.');
+        const msg = error instanceof Error ? error.message : 'Ukendt fejl';
+        setErrorMessage(`Der opstod en fejl: ${msg}`);
       }
       setState('error');
     }
   };
 
   const handleDemoLogin = async () => {
+    setUseDemo(true);
     setState('verifying');
     await new Promise((resolve) => setTimeout(resolve, 1500));
     const demoUser: MitIDUserInfo = {
       sub: 'demo-user-001',
       name: 'Demo Bruger',
-      mitidVerified: true,
+      mitidVerified: false,
     };
     setUserInfo(demoUser);
     setState('verified');
@@ -103,7 +105,7 @@ export const MitIDScreen: React.FC<MitIDScreenProps> = ({ onVerified }) => {
           <Button title="Prøv igen med MitID" onPress={handleMitIDLogin} />
           <Button
             title="Fortsæt uden MitID (demo)"
-            onPress={() => { setUseDemo(true); handleDemoLogin(); }}
+            onPress={handleDemoLogin}
             variant="ghost"
             size="medium"
           />
@@ -158,7 +160,7 @@ export const MitIDScreen: React.FC<MitIDScreenProps> = ({ onVerified }) => {
         />
         <Button
           title="Prøv uden MitID (demo)"
-          onPress={() => { setUseDemo(true); handleDemoLogin(); }}
+          onPress={handleDemoLogin}
           variant="ghost"
           size="medium"
         />

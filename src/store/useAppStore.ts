@@ -35,12 +35,14 @@ export interface ScamTip {
 interface AppState {
   isOnboarded: boolean;
   isAuthenticated: boolean;
+  hasSeedData: boolean;
   user: UserProfile | null;
   contacts: Contact[];
   scamTips: ScamTip[];
 
   setOnboarded: (value: boolean) => void;
   setAuthenticated: (value: boolean) => void;
+  setHasSeedData: (value: boolean) => void;
   setUser: (user: UserProfile | null) => void;
   addContact: (contact: Contact) => void;
   removeContact: (id: string) => void;
@@ -52,12 +54,14 @@ interface AppState {
 export const useAppStore = create<AppState>((set) => ({
   isOnboarded: false,
   isAuthenticated: false,
+  hasSeedData: false,
   user: null,
   contacts: [],
   scamTips: [],
 
   setOnboarded: (value) => set({ isOnboarded: value }),
   setAuthenticated: (value) => set({ isAuthenticated: value }),
+  setHasSeedData: (value) => set({ hasSeedData: value }),
   setUser: (user) => set({ user }),
 
   addContact: (contact) =>

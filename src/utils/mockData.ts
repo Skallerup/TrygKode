@@ -30,7 +30,7 @@ export const mockContacts: Contact[] = [
   },
   {
     id: '4',
-    name: 'Bedstefor (Ole)',
+    name: 'Bedstefar (Ole)',
     phone: '+45 56 78 90 12',
     codeWord: 'koldskål-fyrtårn',
     codeType: 'static',

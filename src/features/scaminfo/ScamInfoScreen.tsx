@@ -108,6 +108,7 @@ export const ScamInfoScreen: React.FC = () => {
         <SafeAreaView style={styles.modalContainer}>
           <ScreenHeader
             title={getCategoryLabel(selectedTip?.category ?? 'tip')}
+            subtitle={selectedTip?.title}
             onBack={() => setSelectedTip(null)}
           />
           <ScrollView contentContainerStyle={styles.modalContent}>

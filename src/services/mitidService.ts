@@ -86,10 +86,27 @@ export class MitIDService {
    * 5. Vi dekoder og returnerer brugerinfo
    */
   async authenticate(): Promise<MitIDUserInfo> {
-    const discovery = await this.getDiscovery();
+    let discovery: AuthSession.DiscoveryDocument;
+    try {
+      discovery = await this.getDiscovery();
+    } catch (err) {
+      throw new MitIDError(
+        'DISCOVERY_FAILED',
+        `Kunne ikke forbinde til MitID-tjenesten. Tjek at Criipto-domænet er korrekt konfigureret. (${err instanceof Error ? err.message : 'Ukendt fejl'})`
+      );
+    }
+
     const request = this.createAuthRequest();
 
-    const result = await request.promptAsync(discovery);
+    let result: AuthSession.AuthSessionResult;
+    try {
+      result = await request.promptAsync(discovery);
+    } catch (err) {
+      throw new MitIDError(
+        'PROMPT_FAILED',
+        `MitID-login vinduet kunne ikke åbnes. (${err instanceof Error ? err.message : 'Ukendt fejl'})`
+      );
+    }
 
     if (result.type === 'cancel' || result.type === 'dismiss') {
       throw new MitIDError('LOGIN_CANCELLED', 'Login blev annulleret');
