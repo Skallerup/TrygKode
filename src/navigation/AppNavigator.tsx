@@ -6,6 +6,7 @@ import { colors, typography } from '../theme';
 import { useAppStore, Contact } from '../store/useAppStore';
 import { OnboardingScreen } from '../features/onboarding/OnboardingScreen';
 import { MitIDScreen } from '../features/onboarding/MitIDScreen';
+import { MitIDUserInfo } from '../services/mitidService';
 import { HomeScreen } from '../features/home/HomeScreen';
 import { ContactDetailScreen } from '../features/contacts/ContactDetailScreen';
 import { AddContactScreen } from '../features/contacts/AddContactScreen';
@@ -100,14 +101,14 @@ export const AppNavigator: React.FC = () => {
     return (
       <NavigationContainer>
         <MitIDScreen
-          onVerified={() => {
+          onVerified={(userInfo?: MitIDUserInfo) => {
             setOnboarded(true);
             setAuthenticated(true);
             setUser({
-              id: '1',
-              name: 'Martin',
-              phone: '+45 00 00 00 00',
-              mitIdVerified: true,
+              id: userInfo?.sub || 'local-user',
+              name: userInfo?.name || 'Bruger',
+              phone: '',
+              mitIdVerified: userInfo?.mitidVerified ?? false,
               biometricsEnabled: true,
               createdAt: new Date().toISOString(),
             });

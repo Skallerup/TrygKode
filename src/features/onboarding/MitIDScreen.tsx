@@ -1,26 +1,57 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius } from '../../theme';
+import { colors, typography, spacing } from '../../theme';
 import { Button, Card } from '../../components';
+import { mitidService, MitIDUserInfo, MitIDError } from '../../services/mitidService';
 
 interface MitIDScreenProps {
-  onVerified: () => void;
+  onVerified: (userInfo?: MitIDUserInfo) => void;
 }
 
+type ScreenState = 'intro' | 'verifying' | 'verified' | 'error';
+
 export const MitIDScreen: React.FC<MitIDScreenProps> = ({ onVerified }) => {
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
+  const [state, setState] = useState<ScreenState>('intro');
+  const [userInfo, setUserInfo] = useState<MitIDUserInfo | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [useDemo, setUseDemo] = useState(false);
 
   const handleMitIDLogin = async () => {
-    setIsVerifying(true);
-    // Mock MitID-verifikation — i produktion forbindes til MitID Broker API
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setIsVerified(true);
-    setIsVerifying(false);
+    setState('verifying');
+    setErrorMessage('');
+
+    try {
+      const info = await mitidService.authenticate();
+      setUserInfo(info);
+      setState('verified');
+    } catch (error) {
+      if (error instanceof MitIDError) {
+        if (error.code === 'LOGIN_CANCELLED') {
+          setState('intro');
+          return;
+        }
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('Der opstod en uventet fejl. Prøv igen.');
+      }
+      setState('error');
+    }
   };
 
-  if (isVerified) {
+  const handleDemoLogin = async () => {
+    setState('verifying');
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const demoUser: MitIDUserInfo = {
+      sub: 'demo-user-001',
+      name: 'Demo Bruger',
+      mitidVerified: true,
+    };
+    setUserInfo(demoUser);
+    setState('verified');
+  };
+
+  if (state === 'verified' && userInfo) {
     return (
       <View style={styles.container}>
         <View style={styles.content}>
@@ -28,12 +59,54 @@ export const MitIDScreen: React.FC<MitIDScreenProps> = ({ onVerified }) => {
             <Ionicons name="checkmark-circle" size={100} color={colors.secondary} />
           </View>
           <Text style={styles.title}>Verificeret!</Text>
+          {userInfo.name && (
+            <Text style={styles.welcomeName}>Velkommen, {userInfo.name}</Text>
+          )}
           <Text style={styles.description}>
             Din identitet er bekræftet med MitID. Du er nu klar til at bruge TrygKode.
           </Text>
+          {!useDemo && (
+            <Card style={styles.verifiedCard} variant="outlined">
+              <View style={styles.verifiedRow}>
+                <Ionicons name="shield-checkmark" size={20} color={colors.secondary} />
+                <Text style={styles.verifiedText}>MitID verificeret</Text>
+              </View>
+            </Card>
+          )}
+          {useDemo && (
+            <Card style={styles.demoCard} variant="outlined">
+              <View style={styles.verifiedRow}>
+                <Ionicons name="information-circle" size={20} color={colors.warning} />
+                <Text style={styles.demoText}>Demo-tilstand — ikke MitID-verificeret</Text>
+              </View>
+            </Card>
+          )}
         </View>
         <View style={styles.buttonContainer}>
-          <Button title="Fortsæt til TrygKode" onPress={onVerified} />
+          <Button title="Fortsæt til TrygKode" onPress={() => onVerified(userInfo)} />
+        </View>
+      </View>
+    );
+  }
+
+  if (state === 'error') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <View style={styles.errorIcon}>
+            <Ionicons name="alert-circle" size={80} color={colors.danger} />
+          </View>
+          <Text style={styles.title}>Noget gik galt</Text>
+          <Text style={styles.description}>{errorMessage}</Text>
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button title="Prøv igen med MitID" onPress={handleMitIDLogin} />
+          <Button
+            title="Fortsæt uden MitID (demo)"
+            onPress={() => { setUseDemo(true); handleDemoLogin(); }}
+            variant="ghost"
+            size="medium"
+          />
         </View>
       </View>
     );
@@ -43,31 +116,29 @@ export const MitIDScreen: React.FC<MitIDScreenProps> = ({ onVerified }) => {
     <View style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Ionicons name="finger-print" size={64} color={colors.primary} />
+          <View style={styles.mitidBadge}>
+            <Text style={styles.mitidBadgeText}>MitID</Text>
+          </View>
         </View>
         <Text style={styles.title}>Bekræft din identitet</Text>
         <Text style={styles.description}>
           For at sikre at alle brugere er rigtige personer, skal du verificere dig med MitID.
+          {'\n\n'}
+          Du vil blive sendt til MitID-login, præcis som du kender det fra din bank.
         </Text>
 
         <Card style={styles.infoCard} variant="outlined">
           <View style={styles.infoRow}>
             <Ionicons name="lock-closed" size={20} color={colors.primary} />
-            <Text style={styles.infoText}>
-              Vi gemmer ingen MitID-oplysninger
-            </Text>
+            <Text style={styles.infoText}>Vi gemmer ingen MitID-oplysninger</Text>
           </View>
           <View style={styles.infoRow}>
             <Ionicons name="shield-checkmark" size={20} color={colors.primary} />
-            <Text style={styles.infoText}>
-              Bruges kun til at bekræfte din identitet
-            </Text>
+            <Text style={styles.infoText}>Sikker forbindelse via OpenID Connect</Text>
           </View>
           <View style={styles.infoRow}>
             <Ionicons name="eye-off" size={20} color={colors.primary} />
-            <Text style={styles.infoText}>
-              Dine data er krypteret og private
-            </Text>
+            <Text style={styles.infoText}>Dine data er krypteret og private</Text>
           </View>
         </Card>
       </View>
@@ -76,10 +147,24 @@ export const MitIDScreen: React.FC<MitIDScreenProps> = ({ onVerified }) => {
         <Button
           title="Log ind med MitID"
           onPress={handleMitIDLogin}
-          loading={isVerifying}
+          loading={state === 'verifying'}
+          icon={
+            state !== 'verifying' ? (
+              <View style={styles.mitidIcon}>
+                <Text style={styles.mitidIconText}>MitID</Text>
+              </View>
+            ) : undefined
+          }
+        />
+        <Button
+          title="Prøv uden MitID (demo)"
+          onPress={() => { setUseDemo(true); handleDemoLogin(); }}
+          variant="ghost"
+          size="medium"
         />
         <Text style={styles.footerText}>
-          Ved at fortsætte accepterer du vores vilkår og privatlivspolitik
+          Ved at fortsætte accepterer du vores vilkår og privatlivspolitik.
+          {'\n'}MitID-login leveres af Criipto, en godkendt MitID-broker.
         </Text>
       </View>
     </View>
@@ -106,7 +191,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
+  mitidBadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  mitidBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
   successIcon: {
+    marginBottom: spacing.lg,
+  },
+  errorIcon: {
     marginBottom: spacing.lg,
   },
   title: {
@@ -114,6 +214,12 @@ const styles = StyleSheet.create({
     color: colors.text,
     textAlign: 'center',
     marginBottom: spacing.md,
+  },
+  welcomeName: {
+    ...typography.h3,
+    color: colors.primary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
   description: {
     ...typography.body,
@@ -136,14 +242,47 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
   },
+  verifiedCard: {
+    borderColor: colors.secondary,
+    backgroundColor: colors.successLight,
+  },
+  verifiedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  verifiedText: {
+    ...typography.bodyBold,
+    color: colors.secondaryDark,
+  },
+  demoCard: {
+    borderColor: colors.warning,
+    backgroundColor: colors.warningLight,
+  },
+  demoText: {
+    ...typography.caption,
+    color: colors.warning,
+  },
   buttonContainer: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxl,
     gap: spacing.md,
   },
+  mitidIcon: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  mitidIconText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
   footerText: {
     ...typography.small,
     color: colors.textLight,
     textAlign: 'center',
+    lineHeight: 18,
   },
 });
