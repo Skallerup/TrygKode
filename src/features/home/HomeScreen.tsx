@@ -5,7 +5,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +12,7 @@ import { colors, typography, spacing, borderRadius } from '../../theme';
 import { Avatar, Card, ScreenHeader } from '../../components';
 import { useAppStore, Contact } from '../../store/useAppStore';
 import { mockContacts } from '../../utils/mockData';
+import { showAlert } from '../../utils/alerts';
 import { daysUntilExpiry } from '../../utils/codeGenerator';
 
 interface HomeScreenProps {
@@ -109,7 +109,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       <ScreenHeader
         title="TrygKode"
         subtitle="Din tryghed, dit kodeord"
-        rightAction={{ icon: 'notifications-outline', onPress: () => Alert.alert('Notifikationer', 'Du har ingen nye notifikationer.') }}
+        rightAction={{ icon: 'notifications-outline', onPress: () => showAlert('Notifikationer', 'Du har ingen nye notifikationer.') }}
       />
       <FlatList
         data={contacts}

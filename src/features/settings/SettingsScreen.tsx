@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Switch,
   TextInput,
   Modal,
@@ -15,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { Card, Avatar, ScreenHeader, Button } from '../../components';
 import { useAppStore } from '../../store/useAppStore';
+import { confirmAction, showAlert } from '../../utils/alerts';
 
 export const SettingsScreen: React.FC = () => {
   const { user, contacts, setUser, resetStore } = useAppStore();
@@ -30,30 +30,23 @@ export const SettingsScreen: React.FC = () => {
 
   const handleSaveProfile = () => {
     if (!editName.trim()) {
-      Alert.alert('Mangler navn', 'Du skal have et navn.');
+      showAlert('Mangler navn', 'Du skal have et navn.');
       return;
     }
     if (user) {
       setUser({ ...user, name: editName.trim(), phone: editPhone.trim() });
     }
     setShowEditProfile(false);
-    Alert.alert('Gemt', 'Din profil er opdateret.');
+    showAlert('Gemt', 'Din profil er opdateret.');
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
+    confirmAction(
       'Slet din konto',
       'Er du helt sikker? Alle dine kontakter og kodeord slettes permanent. Dette kan ikke fortrydes.',
-      [
-        { text: 'Annuller', style: 'cancel' },
-        {
-          text: 'Ja, slet min konto',
-          style: 'destructive',
-          onPress: () => {
-            resetStore();
-          },
-        },
-      ]
+      () => {
+        resetStore();
+      }
     );
   };
 

@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Alert,
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +12,7 @@ import { colors, typography, spacing, borderRadius } from '../../theme';
 import { Avatar, Button, Card, CodeWordDisplay, ScreenHeader } from '../../components';
 import { useAppStore, Contact } from '../../store/useAppStore';
 import { generateCodeWord, generateRotatingCode, formatDate, getExpiryDate } from '../../utils/codeGenerator';
+import { confirmAction, showAlert } from '../../utils/alerts';
 
 interface ContactDetailScreenProps {
   contact: Contact;
@@ -28,12 +28,8 @@ export const ContactDetailScreen: React.FC<ContactDetailScreenProps> = ({
   const [newCodeWord, setNewCodeWord] = useState('');
 
   const handleCheckIn = () => {
-    Alert.alert(
-      'Check-in sendt',
-      `En påmindelse er sendt til ${contact.name} om at huske jeres kodeord.`,
-      [{ text: 'OK' }]
-    );
     updateContact(contact.id, { lastCheckIn: new Date().toISOString() });
+    showAlert('Check-in sendt', `En påmindelse er sendt til ${contact.name} om at huske jeres kodeord.`);
   };
 
   const handleRegenerateCode = () => {
@@ -41,50 +37,38 @@ export const ContactDetailScreen: React.FC<ContactDetailScreenProps> = ({
       ? generateCodeWord()
       : generateRotatingCode();
 
-    Alert.alert(
+    confirmAction(
       'Nyt kodeord',
       `Er du sikker på at du vil oprette et nyt kodeord? Husk at dele det nye kodeord med ${contact.name} ansigt til ansigt.`,
-      [
-        { text: 'Annuller', style: 'cancel' },
-        {
-          text: 'Ja, opret nyt',
-          onPress: () => {
-            updateCodeWord(contact.id, newCode);
-            if (contact.codeType === 'rotating') {
-              updateContact(contact.id, { expiresAt: getExpiryDate(30) });
-            }
-          },
-        },
-      ]
+      () => {
+        updateCodeWord(contact.id, newCode);
+        if (contact.codeType === 'rotating') {
+          updateContact(contact.id, { expiresAt: getExpiryDate(30) });
+        }
+        showAlert('Nyt kodeord oprettet', 'Husk at dele det nye kodeord ansigt til ansigt.');
+      }
     );
   };
 
   const handleSaveCustomCode = () => {
     if (newCodeWord.trim().length < 3) {
-      Alert.alert('For kort', 'Kodeordet skal være mindst 3 tegn langt.');
+      showAlert('For kort', 'Kodeordet skal være mindst 3 tegn langt.');
       return;
     }
     updateCodeWord(contact.id, newCodeWord.trim());
     setIsEditing(false);
     setNewCodeWord('');
-    Alert.alert('Gemt', 'Det nye kodeord er gemt. Husk at dele det ansigt til ansigt.');
+    showAlert('Gemt', 'Det nye kodeord er gemt. Husk at dele det ansigt til ansigt.');
   };
 
   const handleRemoveContact = () => {
-    Alert.alert(
+    confirmAction(
       'Fjern kontakt',
       `Er du sikker på at du vil fjerne ${contact.name}? Jeres kodeord vil blive slettet permanent.`,
-      [
-        { text: 'Annuller', style: 'cancel' },
-        {
-          text: 'Fjern',
-          style: 'destructive',
-          onPress: () => {
-            removeContact(contact.id);
-            onBack();
-          },
-        },
-      ]
+      () => {
+        removeContact(contact.id);
+        onBack();
+      }
     );
   };
 

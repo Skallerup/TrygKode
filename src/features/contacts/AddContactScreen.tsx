@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +12,7 @@ import { colors, typography, spacing, borderRadius } from '../../theme';
 import { Button, Card, ScreenHeader } from '../../components';
 import { useAppStore } from '../../store/useAppStore';
 import { generateCodeWord, generateRotatingCode, getExpiryDate } from '../../utils/codeGenerator';
+import { showAlert } from '../../utils/alerts';
 
 interface AddContactScreenProps {
   onBack: () => void;
@@ -44,13 +44,13 @@ export const AddContactScreen: React.FC<AddContactScreenProps> = ({
   const handleContinue = () => {
     if (step === 'info') {
       if (!name.trim()) {
-        Alert.alert('Mangler navn', 'Skriv kontaktens navn for at fortsætte.');
+        showAlert('Mangler navn', 'Skriv kontaktens navn for at fortsætte.');
         return;
       }
       setStep('code');
     } else if (step === 'code') {
       if (customCode.trim() && customCode.trim().length < 3) {
-        Alert.alert('For kort kodeord', 'Kodeordet skal være mindst 3 tegn langt.');
+        showAlert('For kort kodeord', 'Kodeordet skal være mindst 3 tegn langt.');
         return;
       }
       setStep('share');
