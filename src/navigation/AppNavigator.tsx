@@ -10,15 +10,27 @@ import { MitIDUserInfo } from '../services/mitidService';
 import { HomeScreen } from '../features/home/HomeScreen';
 import { ContactDetailScreen } from '../features/contacts/ContactDetailScreen';
 import { AddContactScreen } from '../features/contacts/AddContactScreen';
+import { CodeSetupScreen } from '../features/contacts/CodeSetupScreen';
 import { ScamInfoScreen } from '../features/scaminfo/ScamInfoScreen';
 import { SettingsScreen } from '../features/settings/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 
 function HomeStack() {
-  const [screen, setScreen] = useState<'home' | 'detail' | 'add'>('home');
+  const [screen, setScreen] = useState<'home' | 'detail' | 'add' | 'codeSetup'>('home');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const contacts = useAppStore((s) => s.contacts);
+
+  if (screen === 'codeSetup' && selectedContact) {
+    const freshContact = contacts.find((c) => c.id === selectedContact.id) || selectedContact;
+    return (
+      <CodeSetupScreen
+        contact={freshContact}
+        onBack={() => { setScreen('detail'); }}
+        onComplete={() => { setScreen('home'); setSelectedContact(null); }}
+      />
+    );
+  }
 
   if (screen === 'detail' && selectedContact) {
     const freshContact = contacts.find((c) => c.id === selectedContact.id) || selectedContact;
@@ -26,6 +38,7 @@ function HomeStack() {
       <ContactDetailScreen
         contact={freshContact}
         onBack={() => { setScreen('home'); setSelectedContact(null); }}
+        onSetupCode={(contact) => { setSelectedContact(contact); setScreen('codeSetup'); }}
       />
     );
   }

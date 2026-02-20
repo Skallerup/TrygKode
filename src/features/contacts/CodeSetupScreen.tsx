@@ -1,0 +1,318 @@
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  ScrollView,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, typography, spacing, borderRadius } from '../../theme';
+import { Button, Card, ScreenHeader } from '../../components';
+import { useAppStore, Contact } from '../../store/useAppStore';
+import { generateCodeWord, generateRotatingCode, getExpiryDate } from '../../utils/codeGenerator';
+import { showAlert } from '../../utils/alerts';
+
+interface CodeSetupScreenProps {
+  contact: Contact;
+  onBack: () => void;
+  onComplete: () => void;
+}
+
+export const CodeSetupScreen: React.FC<CodeSetupScreenProps> = ({
+  contact,
+  onBack,
+  onComplete,
+}) => {
+  const { updateContact, updateCodeWord } = useAppStore();
+  const [codeType, setCodeType] = useState<'static' | 'rotating'>('static');
+  const [customCode, setCustomCode] = useState('');
+  const [generatedCode, setGeneratedCode] = useState(() => generateCodeWord());
+  const [step, setStep] = useState<'type' | 'share'>('type');
+
+  const regenerateCode = useCallback((type: 'static' | 'rotating') => {
+    setGeneratedCode(type === 'static' ? generateCodeWord() : generateRotatingCode());
+  }, []);
+
+  const handleCodeTypeChange = (type: 'static' | 'rotating') => {
+    setCodeType(type);
+    setCustomCode('');
+    regenerateCode(type);
+  };
+
+  const handleContinue = () => {
+    if (customCode.trim() && customCode.trim().length < 3) {
+      showAlert('For kort kodeord', 'Kodeordet skal være mindst 3 tegn langt.');
+      return;
+    }
+    setStep('share');
+  };
+
+  const handleSave = () => {
+    const finalCode = customCode.trim() || generatedCode;
+    updateCodeWord(contact.id, finalCode);
+    updateContact(contact.id, {
+      codeType,
+      expiresAt: codeType === 'rotating' ? getExpiryDate(30) : undefined,
+    });
+    onComplete();
+  };
+
+  const renderTypeStep = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Vælg kodeordstype for {contact.name}</Text>
+      <Text style={styles.stepDescription}>
+        I er nu forbundet! Vælg hvilken type kodeord I vil bruge til at beskytte jer.
+      </Text>
+
+      <Card
+        style={[styles.optionCard, codeType === 'static' && styles.optionCardActive]}
+        onPress={() => handleCodeTypeChange('static')}
+        variant="outlined"
+      >
+        <View style={styles.optionHeader}>
+          <Ionicons name="key-outline" size={24} color={codeType === 'static' ? colors.primary : colors.textSecondary} />
+          <Text style={[styles.optionTitle, codeType === 'static' && styles.optionTitleActive]}>
+            Fast kodeord
+          </Text>
+        </View>
+        <Text style={styles.optionDescription}>
+          I vælger et kodeord, der forbliver det samme. Nemt at huske for alle aldre.
+        </Text>
+      </Card>
+
+      <Card
+        style={[styles.optionCard, codeType === 'rotating' && styles.optionCardActive]}
+        onPress={() => handleCodeTypeChange('rotating')}
+        variant="outlined"
+      >
+        <View style={styles.optionHeader}>
+          <Ionicons name="refresh-outline" size={24} color={codeType === 'rotating' ? colors.primary : colors.textSecondary} />
+          <Text style={[styles.optionTitle, codeType === 'rotating' && styles.optionTitleActive]}>
+            Skiftende kodeord
+          </Text>
+        </View>
+        <Text style={styles.optionDescription}>
+          Appen genererer automatisk nye kodeord med jævne mellemrum. Mere sikkert.
+        </Text>
+      </Card>
+
+      {codeType === 'static' && (
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Skriv jeres kodeord (eller lad os vælge ét)</Text>
+          <TextInput
+            style={styles.input}
+            value={customCode}
+            onChangeText={setCustomCode}
+            placeholder={generatedCode}
+            placeholderTextColor={colors.textLight}
+          />
+          <Text style={styles.inputHint}>
+            Lad feltet stå tomt for at bruge det foreslåede kodeord
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+
+  const renderShareStep = () => {
+    const finalCode = customCode.trim() || generatedCode;
+    return (
+      <View style={styles.stepContent}>
+        <View style={styles.shareIcon}>
+          <Ionicons name="people" size={64} color={colors.primary} />
+        </View>
+        <Text style={styles.stepTitle}>Del kodeordet ansigt til ansigt</Text>
+        <Text style={styles.stepDescription}>
+          Fortæl {contact.name} jeres kodeord næste gang I ses.
+          Send det ALDRIG via SMS, e-mail eller beskeder.
+        </Text>
+
+        <Card style={styles.codePreview} variant="elevated">
+          <Text style={styles.codePreviewLabel}>Jeres kodeord:</Text>
+          <Text style={styles.codePreviewWord}>{finalCode}</Text>
+        </Card>
+
+        <Card style={styles.tipCard} variant="outlined">
+          <View style={styles.tipHeader}>
+            <Ionicons name="bulb-outline" size={20} color={colors.warning} />
+            <Text style={styles.tipTitle}>Tip</Text>
+          </View>
+          <Text style={styles.tipText}>
+            Vælg et kodeord der er nemt at huske, men svært at gætte.
+            Brug ikke fødselsdage, navne eller andre oplagte ord.
+          </Text>
+        </Card>
+      </View>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScreenHeader
+        title={`Kodeord: ${contact.name}`}
+        onBack={step === 'share' ? () => setStep('type') : onBack}
+      />
+
+      <View style={styles.progressBar}>
+        {['type', 'share'].map((s, i) => (
+          <View
+            key={s}
+            style={[
+              styles.progressDot,
+              (['type', 'share'].indexOf(step) >= i) && styles.progressDotActive,
+            ]}
+          />
+        ))}
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {step === 'type' && renderTypeStep()}
+        {step === 'share' && renderShareStep()}
+      </ScrollView>
+
+      <View style={styles.bottomBar}>
+        {step === 'type' ? (
+          <Button title="Fortsæt" onPress={handleContinue} />
+        ) : (
+          <Button title="Gem kodeord" onPress={handleSave} variant="secondary" />
+        )}
+      </View>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  progressBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+  },
+  progressDot: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+  },
+  progressDotActive: {
+    backgroundColor: colors.primary,
+  },
+  scrollContent: {
+    padding: spacing.lg,
+    paddingBottom: 100,
+  },
+  stepContent: {
+    gap: spacing.md,
+  },
+  stepTitle: {
+    ...typography.h2,
+    color: colors.text,
+  },
+  stepDescription: {
+    ...typography.body,
+    color: colors.textSecondary,
+    lineHeight: 24,
+  },
+  optionCard: {
+    gap: spacing.sm,
+  },
+  optionCardActive: {
+    borderColor: colors.primary,
+    borderWidth: 2,
+    backgroundColor: colors.primaryLight + '10',
+  },
+  optionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  optionTitle: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  optionTitleActive: {
+    color: colors.primary,
+  },
+  optionDescription: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  inputGroup: {
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  inputLabel: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  input: {
+    ...typography.body,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  inputHint: {
+    ...typography.small,
+    color: colors.textLight,
+  },
+  shareIcon: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  codePreview: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+  },
+  codePreviewLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  codePreviewWord: {
+    ...typography.hero,
+    color: colors.primary,
+    letterSpacing: 2,
+  },
+  tipCard: {
+    gap: spacing.sm,
+  },
+  tipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  tipTitle: {
+    ...typography.bodyBold,
+    color: colors.warning,
+  },
+  tipText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: spacing.md,
+    paddingBottom: spacing.xl,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+});

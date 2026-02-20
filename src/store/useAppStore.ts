@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+export type ContactStatus = 'pending_sent' | 'pending_received' | 'accepted' | 'declined';
+
 export interface Contact {
   id: string;
   name: string;
@@ -11,6 +13,10 @@ export interface Contact {
   expiresAt?: string;
   lastCheckIn?: string;
   isAdmin?: boolean;
+  status: ContactStatus;
+  requestedAt: string;
+  acceptedAt?: string;
+  requestedBy: 'me' | 'them';
 }
 
 export interface UserProfile {
@@ -48,6 +54,8 @@ interface AppState {
   removeContact: (id: string) => void;
   updateContact: (id: string, updates: Partial<Contact>) => void;
   updateCodeWord: (contactId: string, newCodeWord: string) => void;
+  acceptContact: (id: string) => void;
+  declineContact: (id: string) => void;
   setScamTips: (tips: ScamTip[]) => void;
   resetStore: () => void;
 }
@@ -85,6 +93,20 @@ export const useAppStore = create<AppState>((set) => ({
       contacts: state.contacts.map((c) =>
         c.id === contactId ? { ...c, codeWord: newCodeWord } : c
       ),
+    })),
+
+  acceptContact: (id) =>
+    set((state) => ({
+      contacts: state.contacts.map((c) =>
+        c.id === id
+          ? { ...c, status: 'accepted' as const, acceptedAt: new Date().toISOString() }
+          : c
+      ),
+    })),
+
+  declineContact: (id) =>
+    set((state) => ({
+      contacts: state.contacts.filter((c) => c.id !== id),
     })),
 
   setScamTips: (tips) => set({ scamTips: tips }),

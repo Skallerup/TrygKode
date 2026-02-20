@@ -17,13 +17,15 @@ import { confirmAction, showAlert } from '../../utils/alerts';
 interface ContactDetailScreenProps {
   contact: Contact;
   onBack: () => void;
+  onSetupCode?: (contact: Contact) => void;
 }
 
 export const ContactDetailScreen: React.FC<ContactDetailScreenProps> = ({
   contact,
   onBack,
+  onSetupCode,
 }) => {
-  const { updateContact, updateCodeWord, removeContact } = useAppStore();
+  const { updateContact, updateCodeWord, removeContact, acceptContact } = useAppStore();
   const [isEditing, setIsEditing] = useState(false);
   const [newCodeWord, setNewCodeWord] = useState('');
 
@@ -72,6 +74,158 @@ export const ContactDetailScreen: React.FC<ContactDetailScreenProps> = ({
     );
   };
 
+  const handleSimulateAccept = () => {
+    acceptContact(contact.id);
+    showAlert('Godkendt!', `${contact.name} har accepteret din anmodning. I kan nu oprette et kodeord.`);
+  };
+
+  const renderPendingContent = () => (
+    <View style={styles.pendingContainer}>
+      <View style={styles.pendingIconContainer}>
+        <Ionicons name="time-outline" size={64} color={colors.warning} />
+      </View>
+
+      {contact.status === 'pending_sent' ? (
+        <>
+          <Text style={styles.pendingTitle}>Venter på godkendelse</Text>
+          <Text style={styles.pendingDescription}>
+            Du har sendt en forbindelsesanmodning til {contact.name}.
+            Personen skal acceptere, før I kan oprette et fælles kodeord.
+          </Text>
+
+          <Card style={styles.pendingInfoCard} variant="outlined">
+            <View style={styles.pendingInfoRow}>
+              <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
+              <Text style={styles.pendingInfoText}>
+                Sendt: {formatDate(contact.requestedAt)}
+              </Text>
+            </View>
+          </Card>
+
+          <Card style={styles.demoCard} variant="outlined">
+            <View style={styles.demoHeader}>
+              <Ionicons name="flask-outline" size={20} color={colors.primary} />
+              <Text style={styles.demoTitle}>Demo-tilstand</Text>
+            </View>
+            <Text style={styles.demoDescription}>
+              I den rigtige app ville {contact.name} modtage anmodningen.
+              Tryk herunder for at simulere en godkendelse.
+            </Text>
+            <Button
+              title="Simuler godkendelse"
+              onPress={handleSimulateAccept}
+              variant="outline"
+              icon={<Ionicons name="checkmark-circle-outline" size={20} color={colors.primary} />}
+            />
+          </Card>
+        </>
+      ) : (
+        <>
+          <Text style={styles.pendingTitle}>Anmodning modtaget</Text>
+          <Text style={styles.pendingDescription}>
+            {contact.name} vil gerne forbindes med dig.
+            Accepter anmodningen for at oprette et fælles kodeord.
+          </Text>
+        </>
+      )}
+    </View>
+  );
+
+  const renderAcceptedContent = () => (
+    <>
+      {contact.codeWord ? (
+        <>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Jeres kodeord</Text>
+            <CodeWordDisplay
+              codeWord={contact.codeWord}
+              type={contact.codeType}
+              expiresAt={contact.expiresAt ? formatDate(contact.expiresAt) : undefined}
+              contactName={contact.name}
+            />
+          </View>
+
+          {isEditing ? (
+            <Card style={styles.editCard} variant="outlined">
+              <Text style={styles.editLabel}>Skriv nyt kodeord</Text>
+              <TextInput
+                style={styles.editInput}
+                value={newCodeWord}
+                onChangeText={setNewCodeWord}
+                placeholder="F.eks. jordbær-pandekage"
+                placeholderTextColor={colors.textLight}
+                autoFocus
+              />
+              <View style={styles.editButtons}>
+                <Button
+                  title="Annuller"
+                  onPress={() => { setIsEditing(false); setNewCodeWord(''); }}
+                  variant="ghost"
+                  size="small"
+                />
+                <Button
+                  title="Gem kodeord"
+                  onPress={handleSaveCustomCode}
+                  size="small"
+                />
+              </View>
+            </Card>
+          ) : (
+            <View style={styles.actions}>
+              <Button
+                title="Send check-in"
+                onPress={handleCheckIn}
+                variant="outline"
+                icon={<Ionicons name="chatbubble-outline" size={20} color={colors.primary} />}
+              />
+              <Button
+                title="Nyt tilfældigt kodeord"
+                onPress={handleRegenerateCode}
+                variant="outline"
+                icon={<Ionicons name="refresh-outline" size={20} color={colors.primary} />}
+              />
+              {contact.codeType === 'static' && (
+                <Button
+                  title="Skriv eget kodeord"
+                  onPress={() => setIsEditing(true)}
+                  variant="outline"
+                  icon={<Ionicons name="pencil-outline" size={20} color={colors.primary} />}
+                />
+              )}
+            </View>
+          )}
+
+          {contact.lastCheckIn && (
+            <Card style={styles.infoCard} variant="outlined">
+              <View style={styles.infoRow}>
+                <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
+                <Text style={styles.infoText}>
+                  Sidst checked ind: {formatDate(contact.lastCheckIn)}
+                </Text>
+              </View>
+            </Card>
+          )}
+        </>
+      ) : (
+        <View style={styles.noCodeContainer}>
+          <View style={styles.noCodeIcon}>
+            <Ionicons name="key-outline" size={48} color={colors.primary} />
+          </View>
+          <Text style={styles.noCodeTitle}>Intet kodeord endnu</Text>
+          <Text style={styles.noCodeDescription}>
+            {contact.name} har accepteret din anmodning!
+            I skal nu oprette et fælles kodeord.
+          </Text>
+          <Button
+            title="Opret kodeord"
+            onPress={() => onSetupCode?.(contact)}
+            icon={<Ionicons name="add-circle-outline" size={20} color={colors.surface} />}
+          />
+        </View>
+      )}
+    </>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenHeader title={contact.name} onBack={onBack} />
@@ -84,85 +238,24 @@ export const ContactDetailScreen: React.FC<ContactDetailScreenProps> = ({
           {contact.phone && (
             <Text style={styles.phone}>{contact.phone}</Text>
           )}
-          <Text style={styles.memberSince}>
-            Forbundet siden {formatDate(contact.createdAt)}
-          </Text>
+          {contact.status === 'accepted' && (
+            <Text style={styles.memberSince}>
+              Forbundet siden {formatDate(contact.acceptedAt || contact.createdAt)}
+            </Text>
+          )}
+          {contact.status === 'pending_sent' && (
+            <View style={styles.statusBadge}>
+              <Ionicons name="time-outline" size={14} color={colors.warning} />
+              <Text style={styles.statusBadgeText}>Afventer godkendelse</Text>
+            </View>
+          )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Jeres kodeord</Text>
-          <CodeWordDisplay
-            codeWord={contact.codeWord}
-            type={contact.codeType}
-            expiresAt={contact.expiresAt ? formatDate(contact.expiresAt) : undefined}
-            contactName={contact.name}
-          />
-        </View>
-
-        {isEditing ? (
-          <Card style={styles.editCard} variant="outlined">
-            <Text style={styles.editLabel}>Skriv nyt kodeord</Text>
-            <TextInput
-              style={styles.editInput}
-              value={newCodeWord}
-              onChangeText={setNewCodeWord}
-              placeholder="F.eks. jordbær-pandekage"
-              placeholderTextColor={colors.textLight}
-              autoFocus
-            />
-            <View style={styles.editButtons}>
-              <Button
-                title="Annuller"
-                onPress={() => { setIsEditing(false); setNewCodeWord(''); }}
-                variant="ghost"
-                size="small"
-              />
-              <Button
-                title="Gem kodeord"
-                onPress={handleSaveCustomCode}
-                size="small"
-              />
-            </View>
-          </Card>
-        ) : (
-          <View style={styles.actions}>
-            <Button
-              title="Send check-in"
-              onPress={handleCheckIn}
-              variant="outline"
-              icon={<Ionicons name="chatbubble-outline" size={20} color={colors.primary} />}
-            />
-            <Button
-              title="Nyt tilfældigt kodeord"
-              onPress={handleRegenerateCode}
-              variant="outline"
-              icon={<Ionicons name="refresh-outline" size={20} color={colors.primary} />}
-            />
-            {contact.codeType === 'static' && (
-              <Button
-                title="Skriv eget kodeord"
-                onPress={() => setIsEditing(true)}
-                variant="outline"
-                icon={<Ionicons name="pencil-outline" size={20} color={colors.primary} />}
-              />
-            )}
-          </View>
-        )}
-
-        {contact.lastCheckIn && (
-          <Card style={styles.infoCard} variant="outlined">
-            <View style={styles.infoRow}>
-              <Ionicons name="time-outline" size={20} color={colors.textSecondary} />
-              <Text style={styles.infoText}>
-                Sidst checked ind: {formatDate(contact.lastCheckIn)}
-              </Text>
-            </View>
-          </Card>
-        )}
+        {contact.status === 'accepted' ? renderAcceptedContent() : renderPendingContent()}
 
         <View style={styles.dangerZone}>
           <Button
-            title="Fjern kontakt"
+            title={contact.status === 'accepted' ? 'Fjern kontakt' : 'Annuller anmodning'}
             onPress={handleRemoveContact}
             variant="ghost"
             size="medium"
@@ -195,6 +288,20 @@ const styles = StyleSheet.create({
   memberSince: {
     ...typography.small,
     color: colors.textLight,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.warningLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: borderRadius.full,
+  },
+  statusBadgeText: {
+    ...typography.small,
+    color: colors.warning,
+    fontWeight: '600',
   },
   section: {
     marginBottom: spacing.lg,
@@ -243,6 +350,88 @@ const styles = StyleSheet.create({
   infoText: {
     ...typography.caption,
     color: colors.textSecondary,
+  },
+  pendingContainer: {
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  pendingIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.warningLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pendingTitle: {
+    ...typography.h2,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  pendingDescription: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: spacing.md,
+  },
+  pendingInfoCard: {
+    width: '100%',
+    marginTop: spacing.sm,
+  },
+  pendingInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  pendingInfoText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  demoCard: {
+    width: '100%',
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+    borderColor: colors.primaryLight,
+    borderStyle: 'dashed',
+  },
+  demoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  demoTitle: {
+    ...typography.bodyBold,
+    color: colors.primary,
+  },
+  demoDescription: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  noCodeContainer: {
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.lg,
+  },
+  noCodeIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primaryLight + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noCodeTitle: {
+    ...typography.h3,
+    color: colors.text,
+  },
+  noCodeDescription: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   dangerZone: {
     paddingTop: spacing.lg,

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { Button, Card, ScreenHeader } from '../../components';
 import { useAppStore } from '../../store/useAppStore';
-import { generateCodeWord, generateRotatingCode, getExpiryDate } from '../../utils/codeGenerator';
 import { showAlert } from '../../utils/alerts';
 
 interface AddContactScreenProps {
@@ -26,20 +25,7 @@ export const AddContactScreen: React.FC<AddContactScreenProps> = ({
   const { addContact } = useAppStore();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [codeType, setCodeType] = useState<'static' | 'rotating'>('static');
-  const [customCode, setCustomCode] = useState('');
-  const [step, setStep] = useState<'info' | 'code' | 'share'>('info');
-  const [generatedCode, setGeneratedCode] = useState(() => generateCodeWord());
-
-  const regenerateCode = useCallback((type: 'static' | 'rotating') => {
-    setGeneratedCode(type === 'static' ? generateCodeWord() : generateRotatingCode());
-  }, []);
-
-  const handleCodeTypeChange = (type: 'static' | 'rotating') => {
-    setCodeType(type);
-    setCustomCode('');
-    regenerateCode(type);
-  };
+  const [step, setStep] = useState<'info' | 'confirm' | 'sent'>('info');
 
   const handleContinue = () => {
     if (step === 'info') {
@@ -47,37 +33,31 @@ export const AddContactScreen: React.FC<AddContactScreenProps> = ({
         showAlert('Mangler navn', 'Skriv kontaktens navn for at fortsætte.');
         return;
       }
-      setStep('code');
-    } else if (step === 'code') {
-      if (customCode.trim() && customCode.trim().length < 3) {
-        showAlert('For kort kodeord', 'Kodeordet skal være mindst 3 tegn langt.');
-        return;
-      }
-      setStep('share');
+      setStep('confirm');
     }
   };
 
-  const handleSave = () => {
-    const finalCode = customCode.trim() || generatedCode;
-
+  const handleSendRequest = () => {
     addContact({
       id: Date.now().toString(),
       name: name.trim(),
       phone: phone.trim() || undefined,
-      codeWord: finalCode,
-      codeType,
+      codeWord: '',
+      codeType: 'static',
       createdAt: new Date().toISOString(),
-      expiresAt: codeType === 'rotating' ? getExpiryDate(30) : undefined,
+      status: 'pending_sent',
+      requestedAt: new Date().toISOString(),
+      requestedBy: 'me',
     });
-
-    onAdded();
+    setStep('sent');
   };
 
   const renderInfoStep = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Hvem vil du forbinde med?</Text>
+      <Text style={styles.stepTitle}>Hvem vil du forbindes med?</Text>
       <Text style={styles.stepDescription}>
         Skriv navn og telefonnummer på den person, du vil dele et kodeord med.
+        Personen skal godkende anmodningen, før I kan oprette et fælles kodeord.
       </Text>
 
       <View style={styles.inputGroup}>
@@ -93,7 +73,7 @@ export const AddContactScreen: React.FC<AddContactScreenProps> = ({
       </View>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Telefonnummer (valgfrit)</Text>
+        <Text style={styles.inputLabel}>Telefonnummer</Text>
         <TextInput
           style={styles.input}
           value={phone}
@@ -106,101 +86,69 @@ export const AddContactScreen: React.FC<AddContactScreenProps> = ({
     </View>
   );
 
-  const renderCodeStep = () => (
+  const renderConfirmStep = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Vælg kodeordstype</Text>
+      <View style={styles.confirmIcon}>
+        <Ionicons name="person-add" size={64} color={colors.primary} />
+      </View>
+      <Text style={styles.stepTitle}>Send forbindelsesanmodning</Text>
+      <Text style={styles.stepDescription}>
+        Du er ved at sende en anmodning til {name.trim()}.
+        Personen skal acceptere, før I kan oprette et fælles kodeord.
+      </Text>
 
-      <Card
-        style={[styles.optionCard, codeType === 'static' && styles.optionCardActive]}
-        onPress={() => handleCodeTypeChange('static')}
-        variant="outlined"
-      >
-        <View style={styles.optionHeader}>
-          <Ionicons name="key-outline" size={24} color={codeType === 'static' ? colors.primary : colors.textSecondary} />
-          <Text style={[styles.optionTitle, codeType === 'static' && styles.optionTitleActive]}>
-            Fast kodeord
-          </Text>
+      <Card style={styles.summaryCard} variant="outlined">
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Navn</Text>
+          <Text style={styles.summaryValue}>{name.trim()}</Text>
         </View>
-        <Text style={styles.optionDescription}>
-          I vælger et kodeord, der forbliver det samme. Nemt at huske for alle aldre.
-        </Text>
+        {phone.trim() && (
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Telefon</Text>
+            <Text style={styles.summaryValue}>{phone.trim()}</Text>
+          </View>
+        )}
       </Card>
 
-      <Card
-        style={[styles.optionCard, codeType === 'rotating' && styles.optionCardActive]}
-        onPress={() => handleCodeTypeChange('rotating')}
-        variant="outlined"
-      >
-        <View style={styles.optionHeader}>
-          <Ionicons name="refresh-outline" size={24} color={codeType === 'rotating' ? colors.primary : colors.textSecondary} />
-          <Text style={[styles.optionTitle, codeType === 'rotating' && styles.optionTitleActive]}>
-            Skiftende kodeord
+      <Card style={styles.infoCard} variant="outlined">
+        <View style={styles.infoRow}>
+          <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
+          <Text style={styles.infoText}>
+            Kodeordet oprettes først, når personen har accepteret din anmodning.
+            Det sikrer, at begge parter er enige om forbindelsen.
           </Text>
         </View>
-        <Text style={styles.optionDescription}>
-          Appen genererer automatisk nye kodeord med jævne mellemrum. Mere sikkert.
-        </Text>
       </Card>
-
-      {codeType === 'static' && (
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Skriv jeres kodeord (eller lad os vælge ét)</Text>
-          <TextInput
-            style={styles.input}
-            value={customCode}
-            onChangeText={setCustomCode}
-            placeholder={generatedCode}
-            placeholderTextColor={colors.textLight}
-          />
-          <Text style={styles.inputHint}>
-            Lad feltet stå tomt for at bruge det foreslåede kodeord
-          </Text>
-        </View>
-      )}
     </View>
   );
 
-  const renderShareStep = () => {
-    const finalCode = customCode.trim() || generatedCode;
-    return (
-      <View style={styles.stepContent}>
-        <View style={styles.shareIcon}>
-          <Ionicons name="people" size={64} color={colors.primary} />
-        </View>
-        <Text style={styles.stepTitle}>Del kodeordet ansigt til ansigt</Text>
-        <Text style={styles.stepDescription}>
-          Fortæl {name} jeres kodeord næste gang I ses. Send det ALDRIG via SMS, e-mail eller beskeder.
-        </Text>
-
-        <Card style={styles.codePreview} variant="elevated">
-          <Text style={styles.codePreviewLabel}>Jeres kodeord:</Text>
-          <Text style={styles.codePreviewWord}>{finalCode}</Text>
-        </Card>
-
-        <Card style={styles.tipCard} variant="outlined">
-          <View style={styles.tipHeader}>
-            <Ionicons name="bulb-outline" size={20} color={colors.warning} />
-            <Text style={styles.tipTitle}>Tip</Text>
-          </View>
-          <Text style={styles.tipText}>
-            Vælg et kodeord der er nemt at huske, men svært at gætte. Brug ikke fødselsdage, navne eller andre oplagte ord.
-          </Text>
-        </Card>
+  const renderSentStep = () => (
+    <View style={styles.stepContent}>
+      <View style={styles.sentIcon}>
+        <Ionicons name="checkmark-circle" size={80} color={colors.success} />
       </View>
-    );
-  };
+      <Text style={styles.stepTitle}>Anmodning sendt!</Text>
+      <Text style={styles.stepDescription}>
+        {name.trim()} vil modtage din anmodning i deres TrygKode-app.
+        Du får besked, så snart personen accepterer.
+      </Text>
+      <Text style={styles.stepDescription}>
+        Derefter kan I sammen vælge et kodeord og begynde at beskytte jer mod svindel.
+      </Text>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader title="Tilføj kontakt" onBack={onBack} />
+      <ScreenHeader title="Tilføj kontakt" onBack={step === 'sent' ? undefined : onBack} />
 
       <View style={styles.progressBar}>
-        {['info', 'code', 'share'].map((s, i) => (
+        {['info', 'confirm', 'sent'].map((s, i) => (
           <View
             key={s}
             style={[
               styles.progressDot,
-              (step === s || ['info', 'code', 'share'].indexOf(step) > i) &&
+              (['info', 'confirm', 'sent'].indexOf(step) >= i) &&
                 styles.progressDotActive,
             ]}
           />
@@ -212,15 +160,22 @@ export const AddContactScreen: React.FC<AddContactScreenProps> = ({
         showsVerticalScrollIndicator={false}
       >
         {step === 'info' && renderInfoStep()}
-        {step === 'code' && renderCodeStep()}
-        {step === 'share' && renderShareStep()}
+        {step === 'confirm' && renderConfirmStep()}
+        {step === 'sent' && renderSentStep()}
       </ScrollView>
 
       <View style={styles.bottomBar}>
-        {step === 'share' ? (
-          <Button title="Gem kontakt" onPress={handleSave} variant="secondary" />
-        ) : (
+        {step === 'info' && (
           <Button title="Fortsæt" onPress={handleContinue} />
+        )}
+        {step === 'confirm' && (
+          <View style={styles.bottomButtons}>
+            <Button title="Tilbage" onPress={() => setStep('info')} variant="ghost" />
+            <Button title="Send anmodning" onPress={handleSendRequest} />
+          </View>
+        )}
+        {step === 'sent' && (
+          <Button title="Færdig" onPress={onAdded} variant="secondary" />
         )}
       </View>
     </SafeAreaView>
@@ -257,11 +212,13 @@ const styles = StyleSheet.create({
   stepTitle: {
     ...typography.h2,
     color: colors.text,
+    textAlign: 'center',
   },
   stepDescription: {
     ...typography.body,
     color: colors.textSecondary,
     lineHeight: 24,
+    textAlign: 'center',
   },
   inputGroup: {
     gap: spacing.sm,
@@ -281,69 +238,43 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  inputHint: {
-    ...typography.small,
-    color: colors.textLight,
-  },
-  optionCard: {
-    gap: spacing.sm,
-  },
-  optionCardActive: {
-    borderColor: colors.primary,
-    borderWidth: 2,
-    backgroundColor: colors.primaryLight + '10',
-  },
-  optionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  optionTitle: {
-    ...typography.bodyBold,
-    color: colors.text,
-  },
-  optionTitleActive: {
-    color: colors.primary,
-  },
-  optionDescription: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  shareIcon: {
+  confirmIcon: {
     alignItems: 'center',
     paddingVertical: spacing.md,
   },
-  codePreview: {
-    alignItems: 'center',
-    paddingVertical: spacing.lg,
+  summaryCard: {
+    gap: spacing.sm,
   },
-  codePreviewLabel: {
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  summaryLabel: {
     ...typography.caption,
     color: colors.textSecondary,
-    marginBottom: spacing.sm,
   },
-  codePreviewWord: {
-    ...typography.hero,
-    color: colors.primary,
-    letterSpacing: 2,
-  },
-  tipCard: {
-    gap: spacing.sm,
-  },
-  tipHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  tipTitle: {
+  summaryValue: {
     ...typography.bodyBold,
-    color: colors.warning,
+    color: colors.text,
   },
-  tipText: {
+  infoCard: {
+    gap: spacing.sm,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  infoText: {
     ...typography.caption,
     color: colors.textSecondary,
     lineHeight: 20,
+    flex: 1,
+  },
+  sentIcon: {
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
   },
   bottomBar: {
     position: 'absolute',
@@ -355,5 +286,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
+  },
+  bottomButtons: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
 });
