@@ -1,12 +1,5 @@
-import React, { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  FlatList,
-  Animated,
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../../theme';
 import { Button } from '../../components';
@@ -61,79 +54,54 @@ interface OnboardingScreenProps {
 
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
-  const scrollX = useRef(new Animated.Value(0)).current;
+
+  const currentStep = steps[currentIndex];
 
   const handleNext = () => {
     if (currentIndex < steps.length - 1) {
-      flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
       setCurrentIndex(currentIndex + 1);
     } else {
       onComplete();
     }
   };
 
-  const renderStep = ({ item }: { item: OnboardingStep }) => (
-    <View style={styles.stepContainer}>
-      <View style={styles.stepInner}>
-        <View style={styles.iconContainer}>
-          <Ionicons name={item.icon} size={64} color={colors.primary} />
-        </View>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.description}>{item.description}</Text>
-      </View>
-    </View>
-  );
-
-  const renderDots = () => (
-    <View style={styles.dotsContainer}>
-      {steps.map((_, index) => (
-        <View
-          key={index}
-          style={[
-            styles.dot,
-            index === currentIndex ? styles.dotActive : styles.dotInactive,
-          ]}
-        />
-      ))}
-    </View>
-  );
-
   return (
     <View style={styles.container}>
-      <FlatList
-        ref={flatListRef}
-        data={steps}
-        renderItem={renderStep}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-          { useNativeDriver: false }
-        )}
-        onMomentumScrollEnd={(event) => {
-          const index = Math.round(event.nativeEvent.contentOffset.x / width);
-          setCurrentIndex(index);
-        }}
-      />
+      <View style={styles.content}>
+        <View style={styles.iconContainer}>
+          <Ionicons name={currentStep.icon} size={64} color={colors.primary} />
+        </View>
+        <Text style={styles.title}>{currentStep.title}</Text>
+        <Text style={styles.description}>{currentStep.description}</Text>
+      </View>
 
-      {renderDots()}
+      <View style={styles.bottomSection}>
+        <View style={styles.dotsContainer}>
+          {steps.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.dot,
+                index === currentIndex ? styles.dotActive : styles.dotInactive,
+              ]}
+            />
+          ))}
+        </View>
 
-      <View style={styles.buttonContainer}>
-        <Button
-          title={currentIndex === steps.length - 1 ? 'Kom i gang' : 'Næste'}
-          onPress={handleNext}
-        />
-        {currentIndex < steps.length - 1 && (
+        <View style={styles.buttonContainer}>
           <Button
-            title="Spring over"
-            onPress={onComplete}
-            variant="ghost"
-            size="medium"
+            title={currentIndex === steps.length - 1 ? 'Kom i gang' : 'Næste'}
+            onPress={handleNext}
           />
-        )}
+          {currentIndex < steps.length - 1 && (
+            <Button
+              title="Spring over"
+              onPress={onComplete}
+              variant="ghost"
+              size="medium"
+            />
+          )}
+        </View>
       </View>
     </View>
   );
@@ -144,14 +112,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  stepContainer: {
-    width,
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-  },
-  stepInner: {
+  content: {
     flex: 1,
     alignItems: 'center',
+    paddingHorizontal: spacing.lg,
     paddingTop: 60,
   },
   iconContainer: {
@@ -176,6 +140,9 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     paddingHorizontal: spacing.sm,
   },
+  bottomSection: {
+    paddingBottom: spacing.xxl,
+  },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -197,7 +164,6 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xxl,
     gap: spacing.sm,
   },
 });
