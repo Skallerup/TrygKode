@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SectionList,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +26,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onAddContact,
 }) => {
   const { contacts, user, addContact, hasSeedData, setHasSeedData, acceptContact, declineContact } = useAppStore();
+  const isDemo = !user?.mitIdVerified || user?.mitIdSub === 'demo';
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'withCode' | 'pending'>('all');
 
   useEffect(() => {
     if (!hasSeedData) {
@@ -33,10 +37,27 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     }
   }, []);
 
-  const acceptedContacts = contacts.filter((c) => c.status === 'accepted');
-  const pendingContacts = contacts.filter(
+  const filteredContacts = useMemo(() => {
+    let result = contacts;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (c) => c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))
+      );
+    }
+    if (activeFilter === 'withCode') {
+      result = result.filter((c) => c.status === 'accepted' && c.codeWord);
+    } else if (activeFilter === 'pending') {
+      result = result.filter((c) => c.status === 'pending_sent' || c.status === 'pending_received');
+    }
+    return result;
+  }, [contacts, searchQuery, activeFilter]);
+
+  const acceptedContacts = filteredContacts.filter((c) => c.status === 'accepted');
+  const pendingContacts = filteredContacts.filter(
     (c) => c.status === 'pending_sent' || c.status === 'pending_received'
   );
+  const totalAccepted = contacts.filter((c) => c.status === 'accepted').length;
 
   const sections = [
     ...(pendingContacts.length > 0
@@ -156,28 +177,84 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     );
   };
 
+  const filters: { key: typeof activeFilter; label: string }[] = [
+    { key: 'all', label: 'Alle' },
+    { key: 'withCode', label: 'Med kodeord' },
+    { key: 'pending', label: 'Afventer' },
+  ];
+
   const renderHeader = () => (
-    <Card style={styles.welcomeCard} variant="elevated">
-      <View style={styles.welcomeRow}>
-        <View style={styles.welcomeIcon}>
-          <Ionicons name="shield-checkmark" size={32} color={colors.primary} />
+    <View>
+      {isDemo && (
+        <Card style={styles.demoCard}>
+          <View style={styles.demoRow}>
+            <Ionicons name="warning" size={22} color={colors.warning} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.demoTitle}>Demo-tilstand</Text>
+              <Text style={styles.demoText}>Log ind med MitID for fuld sikkerhed og alle funktioner.</Text>
+            </View>
+          </View>
+        </Card>
+      )}
+      <Card style={styles.welcomeCard} variant="elevated">
+        <View style={styles.welcomeRow}>
+          <View style={styles.welcomeIcon}>
+            <Ionicons name="shield-checkmark" size={32} color={colors.primary} />
+          </View>
+          <View style={styles.welcomeText}>
+            <Text style={styles.welcomeTitle}>Du er beskyttet</Text>
+            <Text style={styles.welcomeSub}>
+              {totalAccepted} kontakt{totalAccepted !== 1 ? 'er' : ''} med aktive kodeord
+            </Text>
+          </View>
         </View>
-        <View style={styles.welcomeText}>
-          <Text style={styles.welcomeTitle}>Du er beskyttet</Text>
-          <Text style={styles.welcomeSub}>
-            {acceptedContacts.length} kontakt{acceptedContacts.length !== 1 ? 'er' : ''} med aktive kodeord
-          </Text>
+      </Card>
+
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputRow}>
+          <Ionicons name="search" size={18} color={colors.textLight} />
+          <TextInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Søg kontakter..."
+            placeholderTextColor={colors.textLight}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color={colors.textLight} />
+            </TouchableOpacity>
+          )}
+        </View>
+        <View style={styles.filterRow}>
+          {filters.map((f) => (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.filterChip, activeFilter === f.key && styles.filterChipActive]}
+              onPress={() => setActiveFilter(f.key)}
+            >
+              <Text style={[styles.filterChipText, activeFilter === f.key && styles.filterChipTextActive]}>
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
-    </Card>
+    </View>
   );
+
+  const hasSearchOrFilter = searchQuery.trim().length > 0 || activeFilter !== 'all';
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="people-outline" size={64} color={colors.textLight} />
-      <Text style={styles.emptyTitle}>Ingen kontakter endnu</Text>
+      <Ionicons name={hasSearchOrFilter ? 'search-outline' : 'people-outline'} size={64} color={colors.textLight} />
+      <Text style={styles.emptyTitle}>
+        {hasSearchOrFilter ? 'Ingen resultater' : 'Ingen kontakter endnu'}
+      </Text>
       <Text style={styles.emptyText}>
-        Tilføj familie og venner for at komme i gang med at beskytte jer mod svindel.
+        {hasSearchOrFilter
+          ? 'Ingen kontakter matcher din søgning. Prøv et andet søgeord eller filter.'
+          : 'Tilføj familie og venner for at komme i gang med at beskytte jer mod svindel.'}
       </Text>
     </View>
   );
@@ -398,5 +475,70 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  searchContainer: {
+    marginBottom: spacing.sm,
+  },
+  searchInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    ...typography.body,
+    color: colors.text,
+    padding: 0,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterChipText: {
+    ...typography.small,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  filterChipTextActive: {
+    color: colors.textOnPrimary,
+  },
+  demoCard: {
+    marginBottom: spacing.sm,
+    backgroundColor: colors.warningLight,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  demoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  demoTitle: {
+    ...typography.bodyBold,
+    color: colors.warning,
+  },
+  demoText: {
+    ...typography.small,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
 });

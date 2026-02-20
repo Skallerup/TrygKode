@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TextInput,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +13,7 @@ import { colors, typography, spacing, borderRadius } from '../../theme';
 import { Button, Card, ScreenHeader } from '../../components';
 import { useAppStore } from '../../store/useAppStore';
 import { showAlert } from '../../utils/alerts';
+import * as Contacts from 'expo-contacts';
 
 interface AddContactScreenProps {
   onBack: () => void;
@@ -22,7 +24,8 @@ export const AddContactScreen: React.FC<AddContactScreenProps> = ({
   onBack,
   onAdded,
 }) => {
-  const { addContact } = useAppStore();
+  const { addContact, user } = useAppStore();
+  const isDemo = !user?.mitIdVerified || user?.mitIdSub === 'demo';
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [step, setStep] = useState<'info' | 'confirm' | 'sent'>('info');
@@ -37,7 +40,42 @@ export const AddContactScreen: React.FC<AddContactScreenProps> = ({
     }
   };
 
+  const handleImportContact = async () => {
+    if (Platform.OS === 'web') {
+      showAlert('Kun på mobil', 'Kontakt-import fra telefonbogen er kun tilgængelig i mobilappen (iOS/Android).');
+      return;
+    }
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== 'granted') {
+        showAlert('Adgang nægtet', 'TrygKode har brug for adgang til dine kontakter. Gå til indstillinger og giv tilladelse.');
+        return;
+      }
+      const { data } = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.PhoneNumbers, Contacts.Fields.Name],
+      });
+      if (data.length > 0) {
+        const contact = data[0];
+        setName(contact.name || '');
+        const phoneNumber = contact.phoneNumbers?.[0]?.number || '';
+        setPhone(phoneNumber);
+        showAlert('Kontakt importeret', `${contact.name || 'Kontakt'} er importeret. Du kan redigere oplysningerne nedenfor.`);
+      } else {
+        showAlert('Ingen kontakter', 'Der blev ikke fundet nogen kontakter på din enhed.');
+      }
+    } catch {
+      showAlert('Fejl', 'Kunne ikke hente kontakter. Prøv igen.');
+    }
+  };
+
   const handleSendRequest = () => {
+    if (isDemo) {
+      showAlert(
+        'MitID påkrævet',
+        'For at sende anmodninger skal du være logget ind med MitID. Demo-brugere kan udforske appen men ikke oprette forbindelser.'
+      );
+      return;
+    }
     addContact({
       id: Date.now().toString(),
       name: name.trim(),
@@ -59,6 +97,19 @@ export const AddContactScreen: React.FC<AddContactScreenProps> = ({
         Skriv navn og telefonnummer på den person, du vil dele et kodeord med.
         Personen skal godkende anmodningen, før I kan oprette et fælles kodeord.
       </Text>
+
+      <Button
+        title={Platform.OS === 'web' ? 'Import kun på mobil' : 'Vælg fra telefonbog'}
+        onPress={handleImportContact}
+        variant="outline"
+        icon={<Ionicons name="people-outline" size={20} color={colors.primary} />}
+      />
+
+      <View style={styles.dividerRow}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>eller skriv manuelt</Text>
+        <View style={styles.dividerLine} />
+      </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Navn</Text>
@@ -290,5 +341,20 @@ const styles = StyleSheet.create({
   bottomButtons: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginVertical: spacing.sm,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    ...typography.small,
+    color: colors.textLight,
   },
 });

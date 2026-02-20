@@ -16,8 +16,14 @@ import { Card, Avatar, ScreenHeader, Button } from '../../components';
 import { useAppStore } from '../../store/useAppStore';
 import { confirmAction, showAlert } from '../../utils/alerts';
 
-export const SettingsScreen: React.FC = () => {
-  const { user, contacts, setUser, resetStore } = useAppStore();
+interface SettingsScreenProps {
+  onNavigateToFamilyAdmin?: () => void;
+}
+
+export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigateToFamilyAdmin }) => {
+  const { user, contacts, managedProfiles, setUser, resetStore } = useAppStore();
+  const isDemo = !user?.mitIdVerified || user?.mitIdSub === 'demo';
+  const acceptedCount = contacts.filter((c) => c.status === 'accepted').length;
   const [biometricsEnabled, setBiometricsEnabled] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -26,7 +32,7 @@ export const SettingsScreen: React.FC = () => {
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
-  const [showFamilyAdmin, setShowFamilyAdmin] = useState(false);
+  // showFamilyAdmin removed - now navigates to separate screen
 
   const handleSaveProfile = () => {
     if (!editName.trim()) {
@@ -93,6 +99,20 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </Card>
 
+        {isDemo && (
+          <Card style={styles.demoWarningCard}>
+            <View style={styles.demoWarningRow}>
+              <Ionicons name="warning" size={24} color={colors.warning} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.demoWarningTitle}>Demo-tilstand</Text>
+                <Text style={styles.demoWarningText}>
+                  Du er ikke logget ind med MitID. Nogle funktioner er begrænset.
+                </Text>
+              </View>
+            </View>
+          </Card>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Sikkerhed</Text>
           <Card variant="outlined">
@@ -111,15 +131,42 @@ export const SettingsScreen: React.FC = () => {
                 thumbColor="#FFFFFF"
               />
             </View>
-            <View style={styles.settingsItem}>
+            <View style={[styles.settingsItem, styles.settingsItemBorder]}>
               <View style={styles.settingsIcon}>
-                <Ionicons name="card" size={22} color={colors.primary} />
+                <Ionicons name="card" size={22} color={isDemo ? colors.warning : colors.secondary} />
               </View>
               <View style={styles.settingsContent}>
                 <Text style={styles.settingsLabel}>MitID-verifikation</Text>
-                <Text style={styles.settingsSubtitle}>Din identitet er bekræftet</Text>
+                <Text style={styles.settingsSubtitle}>
+                  {isDemo ? 'Ikke verificeret — demo-tilstand' : 'Din identitet er bekræftet'}
+                </Text>
               </View>
-              <Text style={[styles.valueText, { color: colors.secondary }]}>Aktiv</Text>
+              <Text style={[styles.valueText, { color: isDemo ? colors.warning : colors.secondary }]}>
+                {isDemo ? 'Demo' : 'Aktiv'}
+              </Text>
+            </View>
+            <View style={[styles.settingsItem, styles.settingsItemBorder]}>
+              <View style={styles.settingsIcon}>
+                <Ionicons name="shield-checkmark-outline" size={22} color={colors.primary} />
+              </View>
+              <View style={styles.settingsContent}>
+                <Text style={styles.settingsLabel}>Konto-ID</Text>
+                <Text style={styles.settingsSubtitle}>
+                  {isDemo ? 'demo' : (user?.mitIdSub || '').substring(0, 8) + '...'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.settingsItem}>
+              <View style={styles.settingsIcon}>
+                <Ionicons name="stats-chart-outline" size={22} color={colors.primary} />
+              </View>
+              <View style={styles.settingsContent}>
+                <Text style={styles.settingsLabel}>Aktive forbindelser</Text>
+                <Text style={styles.settingsSubtitle}>
+                  {acceptedCount} godkendt{acceptedCount !== 1 ? 'e' : ''} kontakt{acceptedCount !== 1 ? 'er' : ''}
+                </Text>
+              </View>
+              <Text style={styles.valueText}>{acceptedCount}</Text>
             </View>
           </Card>
         </View>
@@ -148,13 +195,17 @@ export const SettingsScreen: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Familieadministrator</Text>
           <Card variant="outlined">
-            <TouchableOpacity style={styles.settingsItem} onPress={() => setShowFamilyAdmin(true)} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.settingsItem} onPress={() => onNavigateToFamilyAdmin?.()} activeOpacity={0.7}>
               <View style={styles.settingsIcon}>
                 <Ionicons name="people-circle" size={22} color={colors.primary} />
               </View>
               <View style={styles.settingsContent}>
                 <Text style={styles.settingsLabel}>Administrer for andre</Text>
-                <Text style={styles.settingsSubtitle}>Hjælp familiemedlemmer med deres kodeord</Text>
+                <Text style={styles.settingsSubtitle}>
+                  {managedProfiles.length > 0
+                    ? `${managedProfiles.length} person${managedProfiles.length !== 1 ? 'er' : ''} administreret`
+                    : 'Hjælp familiemedlemmer med deres kodeord'}
+                </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
             </TouchableOpacity>
@@ -293,21 +344,7 @@ export const SettingsScreen: React.FC = () => {
         '© 2026 TrygKode. Alle rettigheder forbeholdes.'
       )}
 
-      {/* Familieadministrator */}
-      {renderInfoModal(showFamilyAdmin, () => setShowFamilyAdmin(false), 'Familieadministrator',
-        'Familieadministrator\n\n' +
-        'Denne funktion lader dig hjælpe ældre eller mindre teknisk kyndige familiemedlemmer med at bruge TrygKode.\n\n' +
-        'Som familieadministrator kan du:\n' +
-        '- Oprette og forny kodeord på vegne af et familiemedlem\n' +
-        '- Sende check-in påmindelser\n' +
-        '- Sikre at kodeordene er opdaterede\n\n' +
-        'Sådan kommer du i gang:\n' +
-        '1. Bed dit familiemedlem om at installere TrygKode\n' +
-        '2. Opret en forbindelse via QR-kode, når I er sammen\n' +
-        '3. Familiemedlemmet godkender dig som administrator i deres app\n\n' +
-        'Denne funktion er under udvikling og vil snart være fuldt tilgængelig.\n\n' +
-        'Har du brug for hjælp? Kontakt os på support@trygkode.dk'
-      )}
+      {/* Familieadministrator - now navigates to separate screen */}
     </SafeAreaView>
   );
 };
@@ -430,5 +467,25 @@ const styles = StyleSheet.create({
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  demoWarningCard: {
+    marginBottom: spacing.lg,
+    backgroundColor: colors.warningLight,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  demoWarningRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  demoWarningTitle: {
+    ...typography.bodyBold,
+    color: colors.warning,
+  },
+  demoWarningText: {
+    ...typography.small,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
 });

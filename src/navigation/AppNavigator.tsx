@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography } from '../theme';
-import { useAppStore, Contact } from '../store/useAppStore';
+import { useAppStore, Contact, ManagedProfile } from '../store/useAppStore';
 import { OnboardingScreen } from '../features/onboarding/OnboardingScreen';
 import { MitIDScreen } from '../features/onboarding/MitIDScreen';
 import { MitIDUserInfo } from '../services/mitidService';
@@ -13,6 +13,8 @@ import { AddContactScreen } from '../features/contacts/AddContactScreen';
 import { CodeSetupScreen } from '../features/contacts/CodeSetupScreen';
 import { ScamInfoScreen } from '../features/scaminfo/ScamInfoScreen';
 import { SettingsScreen } from '../features/settings/SettingsScreen';
+import { FamilyAdminScreen } from '../features/settings/FamilyAdminScreen';
+import { ManagedProfileScreen } from '../features/settings/ManagedProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -60,6 +62,35 @@ function HomeStack() {
   );
 }
 
+function SettingsStack() {
+  const [screen, setScreen] = useState<'settings' | 'familyAdmin' | 'managedProfile'>('settings');
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+
+  if (screen === 'managedProfile' && selectedProfileId) {
+    return (
+      <ManagedProfileScreen
+        profileId={selectedProfileId}
+        onBack={() => { setScreen('familyAdmin'); setSelectedProfileId(null); }}
+      />
+    );
+  }
+
+  if (screen === 'familyAdmin') {
+    return (
+      <FamilyAdminScreen
+        onBack={() => setScreen('settings')}
+        onSelectProfile={(profile) => { setSelectedProfileId(profile.id); setScreen('managedProfile'); }}
+      />
+    );
+  }
+
+  return (
+    <SettingsScreen
+      onNavigateToFamilyAdmin={() => setScreen('familyAdmin')}
+    />
+  );
+}
+
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -93,7 +124,7 @@ function MainTabs() {
     >
       <Tab.Screen name="Hjem" component={HomeStack} />
       <Tab.Screen name="Svindelinfo" component={ScamInfoScreen} />
-      <Tab.Screen name="Indstillinger" component={SettingsScreen} />
+      <Tab.Screen name="Indstillinger" component={SettingsStack} />
     </Tab.Navigator>
   );
 }
@@ -122,6 +153,7 @@ export const AppNavigator: React.FC = () => {
               name: userInfo?.name || 'Bruger',
               phone: '',
               mitIdVerified: userInfo?.mitidVerified ?? false,
+              mitIdSub: userInfo?.sub || 'demo',
               biometricsEnabled: true,
               createdAt: new Date().toISOString(),
             });

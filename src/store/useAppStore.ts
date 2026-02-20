@@ -25,7 +25,17 @@ export interface UserProfile {
   phone: string;
   imageUri?: string;
   mitIdVerified: boolean;
+  mitIdSub: string;
   biometricsEnabled: boolean;
+  createdAt: string;
+}
+
+export interface ManagedProfile {
+  id: string;
+  name: string;
+  phone: string;
+  relationship: string;
+  contacts: Contact[];
   createdAt: string;
 }
 
@@ -45,6 +55,7 @@ interface AppState {
   user: UserProfile | null;
   contacts: Contact[];
   scamTips: ScamTip[];
+  managedProfiles: ManagedProfile[];
 
   setOnboarded: (value: boolean) => void;
   setAuthenticated: (value: boolean) => void;
@@ -57,6 +68,12 @@ interface AppState {
   acceptContact: (id: string) => void;
   declineContact: (id: string) => void;
   setScamTips: (tips: ScamTip[]) => void;
+  addManagedProfile: (profile: ManagedProfile) => void;
+  removeManagedProfile: (id: string) => void;
+  updateManagedProfile: (id: string, updates: Partial<ManagedProfile>) => void;
+  addManagedContact: (profileId: string, contact: Contact) => void;
+  removeManagedContact: (profileId: string, contactId: string) => void;
+  updateManagedCodeWord: (profileId: string, contactId: string, newCodeWord: string) => void;
   resetStore: () => void;
 }
 
@@ -67,6 +84,7 @@ export const useAppStore = create<AppState>((set) => ({
   user: null,
   contacts: [],
   scamTips: [],
+  managedProfiles: [],
 
   setOnboarded: (value) => set({ isOnboarded: value }),
   setAuthenticated: (value) => set({ isAuthenticated: value }),
@@ -111,6 +129,48 @@ export const useAppStore = create<AppState>((set) => ({
 
   setScamTips: (tips) => set({ scamTips: tips }),
 
+  addManagedProfile: (profile) =>
+    set((state) => ({ managedProfiles: [...state.managedProfiles, profile] })),
+
+  removeManagedProfile: (id) =>
+    set((state) => ({
+      managedProfiles: state.managedProfiles.filter((p) => p.id !== id),
+    })),
+
+  updateManagedProfile: (id, updates) =>
+    set((state) => ({
+      managedProfiles: state.managedProfiles.map((p) =>
+        p.id === id ? { ...p, ...updates } : p
+      ),
+    })),
+
+  addManagedContact: (profileId, contact) =>
+    set((state) => ({
+      managedProfiles: state.managedProfiles.map((p) =>
+        p.id === profileId
+          ? { ...p, contacts: [...p.contacts, contact] }
+          : p
+      ),
+    })),
+
+  removeManagedContact: (profileId, contactId) =>
+    set((state) => ({
+      managedProfiles: state.managedProfiles.map((p) =>
+        p.id === profileId
+          ? { ...p, contacts: p.contacts.filter((c) => c.id !== contactId) }
+          : p
+      ),
+    })),
+
+  updateManagedCodeWord: (profileId, contactId, newCodeWord) =>
+    set((state) => ({
+      managedProfiles: state.managedProfiles.map((p) =>
+        p.id === profileId
+          ? { ...p, contacts: p.contacts.map((c) => c.id === contactId ? { ...c, codeWord: newCodeWord } : c) }
+          : p
+      ),
+    })),
+
   resetStore: () =>
     set({
       isOnboarded: false,
@@ -119,5 +179,6 @@ export const useAppStore = create<AppState>((set) => ({
       user: null,
       contacts: [],
       scamTips: [],
+      managedProfiles: [],
     }),
 }));
