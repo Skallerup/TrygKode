@@ -49,6 +49,7 @@ interface AppState {
   updateContact: (id: string, updates: Partial<Contact>) => void;
   updateCodeWord: (contactId: string, newCodeWord: string) => void;
   setScamTips: (tips: ScamTip[]) => void;
+  resetStore: () => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -87,4 +88,14 @@ export const useAppStore = create<AppState>((set) => ({
     })),
 
   setScamTips: (tips) => set({ scamTips: tips }),
+
+  resetStore: () =>
+    set({
+      isOnboarded: false,
+      isAuthenticated: false,
+      hasSeedData: false,
+      user: null,
+      contacts: [],
+      scamTips: [],
+    }),
 }));

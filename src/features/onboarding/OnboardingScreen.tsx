@@ -26,21 +26,21 @@ const steps: OnboardingStep[] = [
     icon: 'shield-checkmark',
     title: 'Velkommen til TrygKode',
     description:
-      'Beskyt dig selv og dine nærmeste mod AI-svindel med personlige kodeord, som kun I kender.',
+      'Svindlere bruger nu AI til at kopiere stemmer og narre dine nærmeste. TrygKode beskytter dig med personlige kodeord, som kun du og dine kontakter kender.\n\nIngen AI kan gætte jeres hemmelige ord.',
   },
   {
     id: '2',
     icon: 'people',
     title: 'Forbind med dine nærmeste',
     description:
-      'Tilføj familie og venner, og opret et hemmeligt kodeord sammen. Del det altid ansigt til ansigt.',
+      'Tilføj familie og venner i appen, og opret et hemmeligt kodeord med hver person. Det kan være et sjovt ord som "jordbær-pandekage" eller noget kun I kender.\n\nDel altid kodeordet ansigt til ansigt — aldrig over SMS eller e-mail.',
   },
   {
     id: '3',
     icon: 'call',
     title: 'Verificer ved opkald',
     description:
-      'Når nogen ringer og beder om penge — spørg efter kodeordet. Ingen kodeord? Så er det ikke dem.',
+      'Når nogen ringer og beder om penge eller personlige oplysninger — spørg efter jeres kodeord.\n\nKan de svare korrekt? Så er det den rigtige person.\nIngen kodeord? Læg på og ring selv op til personen.',
   },
 ];
 

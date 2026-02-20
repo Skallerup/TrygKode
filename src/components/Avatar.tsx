@@ -9,8 +9,10 @@ interface AvatarProps {
 }
 
 function getInitials(name: string): string {
-  return name
-    .split(' ')
+  const cleaned = name.replace(/[^a-zA-ZæøåÆØÅ\s]/g, '').trim();
+  return cleaned
+    .split(/\s+/)
+    .filter((part) => part.length > 0)
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join('');
