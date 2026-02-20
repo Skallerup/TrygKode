@@ -26,21 +26,32 @@ const steps: OnboardingStep[] = [
     icon: 'shield-checkmark',
     title: 'Velkommen til TrygKode',
     description:
-      'Svindlere bruger nu AI til at kopiere stemmer og narre dine nærmeste. TrygKode beskytter dig med personlige kodeord, som kun du og dine kontakter kender.\n\nIngen AI kan gætte jeres hemmelige ord.',
+      'Vidste du, at svindlere nu kan kopiere din stemme med kun 3 sekunders optagelse? De bruger AI til at ringe til dine nærmeste og udgive sig for at være dig.\n\n' +
+      'TrygKode beskytter dig med et simpelt princip: et personligt kodeord mellem dig og dine nærmeste, som ingen kunstig intelligens kan gætte.\n\n' +
+      'Appen er 100% gratis og udviklet til danske familier.',
   },
   {
     id: '2',
     icon: 'people',
-    title: 'Forbind med dine nærmeste',
+    title: 'Forbind med familie og venner',
     description:
-      'Tilføj familie og venner i appen, og opret et hemmeligt kodeord med hver person. Det kan være et sjovt ord som "jordbær-pandekage" eller noget kun I kender.\n\nDel altid kodeordet ansigt til ansigt — aldrig over SMS eller e-mail.',
+      'Sådan virker det:\n\n' +
+      '1. Tilføj dine nærmeste som kontakter i appen\n' +
+      '2. Opret et hemmeligt kodeord med hver person — f.eks. "jordbær-pandekage"\n' +
+      '3. Del kodeordet ansigt til ansigt — aldrig digitalt\n\n' +
+      'Du kan vælge et fast kodeord, som I selv finder på, eller lade appen generere skiftende kodeord for ekstra sikkerhed.\n\n' +
+      'Hver kontakt har sit eget unikke kodeord.',
   },
   {
     id: '3',
     icon: 'call',
-    title: 'Verificer ved opkald',
+    title: 'Stop svindel med ét spørgsmål',
     description:
-      'Når nogen ringer og beder om penge eller personlige oplysninger — spørg efter jeres kodeord.\n\nKan de svare korrekt? Så er det den rigtige person.\nIngen kodeord? Læg på og ring selv op til personen.',
+      'Forestil dig: Du får et opkald fra "din mor", der beder dig overføre penge akut.\n\n' +
+      'Med TrygKode spørger du blot:\n"Hvad er vores kodeord?"\n\n' +
+      'Kan personen svare korrekt? Så er det den rigtige.\n' +
+      'Kan de ikke svare? Læg på med det samme og ring selv til personen.\n\n' +
+      'Så enkelt er det at beskytte dig selv og dem du holder af.',
   },
 ];
 
@@ -64,11 +75,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
 
   const renderStep = ({ item }: { item: OnboardingStep }) => (
     <View style={styles.stepContainer}>
-      <View style={styles.iconContainer}>
-        <Ionicons name={item.icon} size={80} color={colors.primary} />
+      <View style={styles.stepInner}>
+        <View style={styles.iconContainer}>
+          <Ionicons name={item.icon} size={64} color={colors.primary} />
+        </View>
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.description}>{item.description}</Text>
       </View>
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.description}>{item.description}</Text>
     </View>
   );
 
@@ -134,21 +147,24 @@ const styles = StyleSheet.create({
   stepContainer: {
     width,
     flex: 1,
-    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  stepInner: {
+    flex: 1,
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
+    paddingTop: 60,
   },
   iconContainer: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: colors.primaryLight + '20',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   title: {
-    ...typography.hero,
+    ...typography.h1,
     color: colors.text,
     textAlign: 'center',
     marginBottom: spacing.md,
@@ -156,8 +172,9 @@ const styles = StyleSheet.create({
   description: {
     ...typography.body,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: 'left',
     lineHeight: 26,
+    paddingHorizontal: spacing.sm,
   },
   dotsContainer: {
     flexDirection: 'row',
