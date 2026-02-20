@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,8 @@ export const ContactDetailScreen: React.FC<ContactDetailScreenProps> = ({
   const { updateContact, updateCodeWord, removeContact, acceptContact } = useAppStore();
   const [isEditing, setIsEditing] = useState(false);
   const [newCodeWord, setNewCodeWord] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(contact.name);
 
   const handleCheckIn = () => {
     updateContact(contact.id, { lastCheckIn: new Date().toISOString() });
@@ -72,6 +75,16 @@ export const ContactDetailScreen: React.FC<ContactDetailScreenProps> = ({
         onBack();
       }
     );
+  };
+
+  const handleSaveName = () => {
+    if (!editedName.trim()) {
+      showAlert('Mangler navn', 'Kontakten skal have et navn.');
+      return;
+    }
+    updateContact(contact.id, { name: editedName.trim() });
+    setIsEditingName(false);
+    showAlert('Navn opdateret', `Kontaktens navn er ændret til "${editedName.trim()}".`);
   };
 
   const handleSimulateAccept = () => {
@@ -235,6 +248,30 @@ export const ContactDetailScreen: React.FC<ContactDetailScreenProps> = ({
       >
         <View style={styles.profileSection}>
           <Avatar name={contact.name} size={80} />
+          {isEditingName ? (
+            <View style={styles.editNameContainer}>
+              <TextInput
+                style={styles.editNameInput}
+                value={editedName}
+                onChangeText={setEditedName}
+                autoFocus
+                selectTextOnFocus
+              />
+              <View style={styles.editNameButtons}>
+                <TouchableOpacity onPress={() => { setIsEditingName(false); setEditedName(contact.name); }}>
+                  <Ionicons name="close-circle" size={28} color={colors.textLight} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleSaveName}>
+                  <Ionicons name="checkmark-circle" size={28} color={colors.success} />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.nameRow} onPress={() => { setEditedName(contact.name); setIsEditingName(true); }}>
+              <Text style={styles.contactNameDisplay}>{contact.name}</Text>
+              <Ionicons name="pencil-outline" size={16} color={colors.textLight} />
+            </TouchableOpacity>
+          )}
           {contact.phone && (
             <Text style={styles.phone}>{contact.phone}</Text>
           )}
@@ -280,6 +317,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.lg,
     gap: spacing.sm,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  contactNameDisplay: {
+    ...typography.h3,
+    color: colors.text,
+  },
+  editNameContainer: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    width: '80%',
+  },
+  editNameInput: {
+    ...typography.h3,
+    color: colors.text,
+    textAlign: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    width: '100%',
+  },
+  editNameButtons: {
+    flexDirection: 'row',
+    gap: spacing.md,
   },
   phone: {
     ...typography.body,

@@ -3,7 +3,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography } from '../theme';
-import { useAppStore, Contact, ManagedProfile } from '../store/useAppStore';
+import { useAppStore, Contact, ManagedProfile, LoginMethod } from '../store/useAppStore';
+import { LockScreen } from '../features/auth/LockScreen';
 import { OnboardingScreen } from '../features/onboarding/OnboardingScreen';
 import { MitIDScreen } from '../features/onboarding/MitIDScreen';
 import { MitIDUserInfo } from '../services/mitidService';
@@ -130,8 +131,9 @@ function MainTabs() {
 }
 
 export const AppNavigator: React.FC = () => {
-  const { isOnboarded, isAuthenticated, setOnboarded, setAuthenticated, setUser } = useAppStore();
+  const { isOnboarded, isAuthenticated, user, setOnboarded, setAuthenticated, setUser } = useAppStore();
   const [onboardingDone, setOnboardingDone] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
 
   if (!isOnboarded && !onboardingDone) {
     return (
@@ -148,6 +150,7 @@ export const AppNavigator: React.FC = () => {
           onVerified={(userInfo?: MitIDUserInfo) => {
             setOnboarded(true);
             setAuthenticated(true);
+            setIsUnlocked(true);
             setUser({
               id: userInfo?.sub || 'local-user',
               name: userInfo?.name || 'Bruger',
@@ -155,9 +158,22 @@ export const AppNavigator: React.FC = () => {
               mitIdVerified: userInfo?.mitidVerified ?? false,
               mitIdSub: userInfo?.sub || 'demo',
               biometricsEnabled: true,
+              preferredLogin: 'faceid',
               createdAt: new Date().toISOString(),
             });
           }}
+        />
+      </NavigationContainer>
+    );
+  }
+
+  if (!isUnlocked) {
+    return (
+      <NavigationContainer>
+        <LockScreen
+          preferredMethod={user?.preferredLogin || 'faceid'}
+          pinCode={user?.pinCode}
+          onUnlocked={() => setIsUnlocked(true)}
         />
       </NavigationContainer>
     );

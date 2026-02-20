@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius } from '../../theme';
 import { Card, Avatar, ScreenHeader, Button } from '../../components';
-import { useAppStore } from '../../store/useAppStore';
+import { useAppStore, LoginMethod } from '../../store/useAppStore';
 import { confirmAction, showAlert } from '../../utils/alerts';
 
 interface SettingsScreenProps {
@@ -32,7 +32,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigateToFami
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
-  // showFamilyAdmin removed - now navigates to separate screen
+  const [showLoginMethod, setShowLoginMethod] = useState(false);
+  const [showSetPin, setShowSetPin] = useState(false);
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinStep, setPinStep] = useState<'enter' | 'confirm'>('enter');
 
   const handleSaveProfile = () => {
     if (!editName.trim()) {
@@ -44,6 +48,51 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigateToFami
     }
     setShowEditProfile(false);
     showAlert('Gemt', 'Din profil er opdateret.');
+  };
+
+  const loginMethodLabels: Record<LoginMethod, string> = {
+    faceid: 'Face ID',
+    pin: 'Personlig kode',
+    mitid: 'MitID',
+  };
+
+  const handleSelectLoginMethod = (method: LoginMethod) => {
+    if (method === 'pin' && !user?.pinCode) {
+      setShowLoginMethod(false);
+      setNewPin('');
+      setConfirmPin('');
+      setPinStep('enter');
+      setShowSetPin(true);
+      return;
+    }
+    if (user) {
+      setUser({ ...user, preferredLogin: method });
+    }
+    setShowLoginMethod(false);
+    showAlert('Gemt', `Foretrukken loginmetode er nu ${loginMethodLabels[method]}.`);
+  };
+
+  const handleSavePin = () => {
+    if (pinStep === 'enter') {
+      if (newPin.length !== 4) {
+        showAlert('Ugyldig kode', 'Koden skal være 4 cifre.');
+        return;
+      }
+      setPinStep('confirm');
+      return;
+    }
+    if (confirmPin !== newPin) {
+      showAlert('Koder matcher ikke', 'De to koder var ikke ens. Prøv igen.');
+      setConfirmPin('');
+      setPinStep('enter');
+      setNewPin('');
+      return;
+    }
+    if (user) {
+      setUser({ ...user, pinCode: newPin, preferredLogin: 'pin' });
+    }
+    setShowSetPin(false);
+    showAlert('Gemt', 'Din personlige kode er oprettet og sat som foretrukken loginmetode.');
   };
 
   const handleDeleteAccount = () => {
@@ -172,6 +221,45 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigateToFami
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Loginmetode</Text>
+          <Card variant="outlined">
+            <TouchableOpacity style={[styles.settingsItem, styles.settingsItemBorder]} onPress={() => setShowLoginMethod(true)} activeOpacity={0.7}>
+              <View style={styles.settingsIcon}>
+                <Ionicons name="log-in" size={22} color={colors.primary} />
+              </View>
+              <View style={styles.settingsContent}>
+                <Text style={styles.settingsLabel}>Foretrukken login</Text>
+                <Text style={styles.settingsSubtitle}>
+                  {loginMethodLabels[user?.preferredLogin || 'faceid']}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.settingsItem}
+              onPress={() => {
+                setNewPin('');
+                setConfirmPin('');
+                setPinStep('enter');
+                setShowSetPin(true);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.settingsIcon}>
+                <Ionicons name="keypad" size={22} color={colors.primary} />
+              </View>
+              <View style={styles.settingsContent}>
+                <Text style={styles.settingsLabel}>{user?.pinCode ? 'Skift personlig kode' : 'Opret personlig kode'}</Text>
+                <Text style={styles.settingsSubtitle}>
+                  {user?.pinCode ? 'Ændr din 4-cifrede kode' : 'Opret en 4-cifret login-kode'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+            </TouchableOpacity>
+          </Card>
+        </View>
+
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Notifikationer</Text>
           <Card variant="outlined">
             <View style={styles.settingsItem}>
@@ -284,6 +372,110 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onNavigateToFami
             />
             <View style={{ marginTop: spacing.lg }}>
               <Button title="Gem ændringer" onPress={handleSaveProfile} />
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Vælg loginmetode */}
+      <Modal visible={showLoginMethod} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowLoginMethod(false)}>
+        <SafeAreaView style={styles.modalContainer}>
+          <ScreenHeader title="Vælg loginmetode" onBack={() => setShowLoginMethod(false)} />
+          <View style={styles.modalContent}>
+            <Text style={styles.loginMethodDescription}>
+              Vælg hvilken metode du foretrækker til at logge ind i TrygKode. De andre metoder kan altid bruges som alternativ.
+            </Text>
+            {(['faceid', 'pin', 'mitid'] as LoginMethod[]).map((method) => {
+              const isSelected = (user?.preferredLogin || 'faceid') === method;
+              const iconMap: Record<LoginMethod, keyof typeof Ionicons.glyphMap> = {
+                faceid: 'scan',
+                pin: 'keypad',
+                mitid: 'card',
+              };
+              const descMap: Record<LoginMethod, string> = {
+                faceid: 'Hurtig og sikker biometrisk login',
+                pin: user?.pinCode
+                  ? 'Log ind med din 4-cifrede kode'
+                  : 'Opret først en personlig kode',
+                mitid: 'Brug MitID til at logge ind',
+              };
+              const isDisabled = method === 'pin' && !user?.pinCode;
+              return (
+                <TouchableOpacity
+                  key={method}
+                  style={[
+                    styles.loginMethodOption,
+                    isSelected && styles.loginMethodOptionSelected,
+                    isDisabled && styles.loginMethodOptionDisabled,
+                  ]}
+                  onPress={() => handleSelectLoginMethod(method)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.loginMethodIcon, isSelected && styles.loginMethodIconSelected]}>
+                    <Ionicons name={iconMap[method]} size={28} color={isSelected ? colors.surface : colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.loginMethodLabel, isSelected && styles.loginMethodLabelSelected]}>
+                      {loginMethodLabels[method]}
+                    </Text>
+                    <Text style={styles.loginMethodSub}>{descMap[method]}</Text>
+                  </View>
+                  {isSelected && <Ionicons name="checkmark-circle" size={24} color={colors.primary} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Opret/Skift personlig kode */}
+      <Modal visible={showSetPin} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowSetPin(false)}>
+        <SafeAreaView style={styles.modalContainer}>
+          <ScreenHeader title={user?.pinCode ? 'Skift personlig kode' : 'Opret personlig kode'} onBack={() => setShowSetPin(false)} />
+          <View style={styles.modalContent}>
+            <View style={styles.pinSetupContainer}>
+              <Text style={styles.pinSetupInstruction}>
+                {pinStep === 'enter' ? 'Indtast en ny 4-cifret kode' : 'Gentag din kode for at bekræfte'}
+              </Text>
+              <View style={styles.pinDotsRow}>
+                {[0, 1, 2, 3].map((i) => {
+                  const val = pinStep === 'enter' ? newPin : confirmPin;
+                  return (
+                    <View
+                      key={i}
+                      style={[styles.pinDotSetting, i < val.length && styles.pinDotSettingFilled]}
+                    />
+                  );
+                })}
+              </View>
+              <View style={styles.pinNumpad}>
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map((key) => (
+                  <TouchableOpacity
+                    key={key || 'empty'}
+                    style={[styles.pinNumpadKey, !key && styles.pinNumpadKeyEmpty]}
+                    onPress={() => {
+                      if (key === 'del') {
+                        if (pinStep === 'enter') setNewPin((p) => p.slice(0, -1));
+                        else setConfirmPin((p) => p.slice(0, -1));
+                      } else if (key) {
+                        if (pinStep === 'enter' && newPin.length < 4) setNewPin((p) => p + key);
+                        else if (pinStep === 'confirm' && confirmPin.length < 4) setConfirmPin((p) => p + key);
+                      }
+                    }}
+                    activeOpacity={key ? 0.6 : 1}
+                    disabled={!key}
+                  >
+                    {key === 'del' ? (
+                      <Ionicons name="backspace-outline" size={24} color={colors.text} />
+                    ) : (
+                      <Text style={styles.pinNumpadKeyText}>{key}</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={{ marginTop: spacing.lg }}>
+                <Button title={pinStep === 'enter' ? 'Næste' : 'Bekræft'} onPress={handleSavePin} />
+              </View>
             </View>
           </View>
         </SafeAreaView>
@@ -467,6 +659,103 @@ const styles = StyleSheet.create({
     color: colors.text,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  loginMethodDescription: {
+    ...typography.body,
+    color: colors.textSecondary,
+    lineHeight: 24,
+    marginBottom: spacing.lg,
+  },
+  loginMethodOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  loginMethodOptionSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight + '15',
+  },
+  loginMethodOptionDisabled: {
+    opacity: 0.5,
+  },
+  loginMethodIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primaryLight + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loginMethodIconSelected: {
+    backgroundColor: colors.primary,
+  },
+  loginMethodLabel: {
+    ...typography.bodyBold,
+    color: colors.text,
+  },
+  loginMethodLabelSelected: {
+    color: colors.primary,
+  },
+  loginMethodSub: {
+    ...typography.small,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  pinSetupContainer: {
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  pinSetupInstruction: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  pinDotsRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  pinDotSetting: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    backgroundColor: 'transparent',
+  },
+  pinDotSettingFilled: {
+    backgroundColor: colors.primary,
+  },
+  pinNumpad: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    maxWidth: 280,
+    gap: spacing.sm,
+  },
+  pinNumpadKey: {
+    width: 72,
+    height: 56,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  pinNumpadKeyEmpty: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+  },
+  pinNumpadKeyText: {
+    ...typography.h3,
+    color: colors.text,
   },
   demoWarningCard: {
     marginBottom: spacing.lg,

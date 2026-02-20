@@ -19,6 +19,8 @@ export interface Contact {
   requestedBy: 'me' | 'them';
 }
 
+export type LoginMethod = 'faceid' | 'pin' | 'mitid';
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -27,6 +29,8 @@ export interface UserProfile {
   mitIdVerified: boolean;
   mitIdSub: string;
   biometricsEnabled: boolean;
+  preferredLogin: LoginMethod;
+  pinCode?: string;
   createdAt: string;
 }
 
